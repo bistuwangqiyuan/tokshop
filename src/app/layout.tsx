@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,9 +14,46 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TokShop - Open-Source LLM Tokens, Pay As You Go",
-  description:
-    "OpenAI-compatible API for DeepSeek, GLM, Qwen and Kimi. Transparent per-token pricing, instant API keys, no subscription.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} - Open-Source LLM Tokens, Pay As You Go`,
+    template: `%s — ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    siteName: SITE_NAME,
+    type: "website",
+    url: SITE_URL,
+    title: `${SITE_NAME} - Open-Source LLM Tokens, Pay As You Go`,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary",
+    title: `${SITE_NAME} - Open-Source LLM Tokens, Pay As You Go`,
+    description: SITE_DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
+};
+
+const ORG_JSONLD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#org`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      publisher: { "@id": `${SITE_URL}/#org` },
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -29,6 +67,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSONLD) }}
+        />
         {children}
       </body>
     </html>

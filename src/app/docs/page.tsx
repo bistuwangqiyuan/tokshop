@@ -1,4 +1,44 @@
+import type { Metadata } from "next";
 import Nav from "@/components/Nav";
+import { SITE_URL } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "API Documentation",
+  description:
+    "How to use the TokShop OpenAI-compatible API: get a key, list models, chat completions, streaming and per-token billing details.",
+  alternates: { canonical: `${SITE_URL}/docs` },
+};
+
+const FAQ_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "Is the API compatible with the OpenAI SDK?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: `Yes. Point any OpenAI SDK at base URL ${SITE_URL}/v1 with your sk-tok- key; /v1/models and /v1/chat/completions (streaming and non-streaming) work unchanged.`,
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How does billing work?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Prepaid USD credits. Each request is deducted as input_tokens x input_price/1M + output_tokens x output_price/1M. When the balance reaches zero, requests return HTTP 402.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How do I get an API key?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Register with an email and password, then create a key in the dashboard. Keys are shown once at creation and can be revoked at any time.",
+      },
+    },
+  ],
+};
 
 const curlExample = `curl https://tokshop.xyz/v1/chat/completions \\
   -H "Content-Type: application/json" \\
@@ -40,6 +80,10 @@ function Code({ children }: { children: string }) {
 export default function DocsPage() {
   return (
     <div className="flex min-h-screen flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSONLD) }}
+      />
       <Nav />
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-14">
         <h1 className="text-3xl font-bold">API Documentation</h1>

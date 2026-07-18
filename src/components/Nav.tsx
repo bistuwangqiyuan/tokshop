@@ -8,11 +8,14 @@ export default function Nav() {
           <span className="text-emerald-400">Tok</span>Shop
         </Link>
         <div className="flex items-center gap-6 text-sm text-zinc-300">
-          <Link href="/#pricing" className="hover:text-white">
+          <Link href="/pricing" className="hover:text-white">
             Pricing
           </Link>
           <Link href="/docs" className="hover:text-white">
             Docs
+          </Link>
+          <Link href="/blog" className="hover:text-white">
+            Blog
           </Link>
           <Link href="/login" className="hover:text-white">
             Sign in

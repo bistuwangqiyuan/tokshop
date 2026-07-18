@@ -172,6 +172,16 @@ export function parseDraft(text: string): {
   };
 }
 
+/** Cut at a word boundary and drop dangling punctuation/connectives. */
+export function shortenTitle(title: string, max: number): string {
+  if (title.length <= max) return title;
+  let cut = title.slice(0, max + 1);
+  cut = cut.slice(0, cut.lastIndexOf(" "));
+  cut = cut.replace(/[\s:;,\-–—]+$/g, "");
+  cut = cut.replace(/\s+(and|or|for|with|the|a|an|to|of|in|on|vs\.?)$/i, "");
+  return cut;
+}
+
 export async function generateArticle(
   sql: Sql,
   source: { kind: "trend"; id: number; keyword: string; context: string } |
@@ -209,6 +219,10 @@ FACTSHEET:\n${facts}`;
     .slice(0, 80);
   if (!slug || !draft.title || !draft.body_md)
     return { ok: false, reason: "draft missing title/slug/body" };
+
+  // Models occasionally overshoot the title budget; shorten at a word
+  // boundary instead of discarding an otherwise good draft.
+  if (draft.title.length > 68) draft.title = shortenTitle(draft.title, 68);
 
   const qc = qcArticle(draft.body_md, draft.title);
   if (!qc.pass) return { ok: false, qc, reason: `qc failed: ${qc.issues.join("; ")}` };

@@ -72,12 +72,16 @@ async function run() {
   if (!source)
     return NextResponse.json({ ok: false, reason: "no topic available" }, { status: 200 });
 
-  // 2. generate + QC + publish
-  let result: Awaited<ReturnType<typeof generateArticle>>;
-  try {
-    result = await generateArticle(sql, source);
-  } catch (e) {
-    result = { ok: false, reason: `generation error: ${String(e).slice(0, 400)}` };
+  // 2. generate + QC + publish (one retry — drafts are discarded on QC
+  // failure, so a second attempt is cheap and keeps the 2h cadence useful)
+  let result: Awaited<ReturnType<typeof generateArticle>> = { ok: false };
+  for (let attempt = 0; attempt < 2 && !result.ok; attempt++) {
+    try {
+      result = await generateArticle(sql, source);
+    } catch (e) {
+      result = { ok: false, reason: `generation error: ${String(e).slice(0, 400)}` };
+    }
+    if (!result.ok && result.reason?.startsWith("slug exists")) break;
   }
 
   // 3. cache refresh + push (only on successful publish)

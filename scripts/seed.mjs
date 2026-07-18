@@ -48,7 +48,8 @@ async function main() {
   const sql = neon(dbUrl);
 
   let gatewayModels = [];
-  const gwKey = process.env.AI_GATEWAY_API_KEY;
+  const gwKey =
+    process.env.AI_GATEWAY_API_KEY ?? process.env.VERCEL_OIDC_TOKEN;
   if (gwKey) {
     const res = await fetch("https://ai-gateway.vercel.sh/v1/models", {
       headers: { Authorization: `Bearer ${gwKey}` },

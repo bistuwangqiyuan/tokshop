@@ -91,6 +91,29 @@ upstream = 0.00000364                            # AI Gateway 实收成本
 assert round(upstream * 1.5, 8) == 0.00000546    # 零售价 = 成本 x 1.5，毛利率 33.3%
 ```
 
+## SEO/GEO 引擎验收（2026-07-18 下午追加）
+
+- 测试对象：https://tokshop.xyz 生产环境（引擎代码本轮从 tokenshop 项目移植并适配 Drizzle/Neon 架构，引擎表独立放在 `engine` schema）
+- 测试方式：`tests/seo-e2e.mjs` 对生产发起真实 HTTP 请求，21 项断言
+- 开发-测试循环：共 3 轮收敛（上限 20 轮）
+  - 第 1 轮：20/21（S03 RSS 无条目——首篇文章尚未生成，属冷启动时序而非缺陷）
+  - 第 2 轮：21/21 通过；随后复跑暴露真实缺陷：AI 产出标题 71 字符 > 68 上限，质检直接弃稿导致该时段无产出（S12–S19 连锁 FAIL）
+  - 修复：标题超长时按词边界收缩至 68 字符内（不再弃稿）+ 质检失败自动重试一次（commit dd9385d）
+  - 第 3 轮：部署后 seo 21/21 + 售卖回归 29/29；再复跑一次仍 21/21 + 29/29（防偶然通过）
+
+| 分组 | 断言 | 结果 |
+|---|---|---|
+| 技术基座 | S01 sitemap（动态含文章）/ S02 robots / S03 RSS / S04 llms.txt / S05 llms-full / S06 IndexNow key 根路径 | 通过 |
+| 结构化数据 | S07 Organization+WebSite（首页）/ S08 Product（/pricing）/ S09 FAQPage（/docs）JSON-LD | 通过 |
+| 热词引擎 | S10 无凭据 401 / S11 七 geo Google Trends 抓取 70 词 + AI 相关性打分 | 通过 |
+| 内容引擎 | S12 生成并发布过质检文章（约 1000–1200 词）/ S13 IndexNow 200 / S14 WebSub 推送 | 通过 |
+| 文章质量 | S15 页面 200 / S16 Article JSON-LD+canonical / S17 内链 / S18 标题 ≤70 字符 / S19 即时进 sitemap+RSS | 通过 |
+| 自审 | S20 审计评分 100 且基础设施全绿 / S21 零页面问题 | 通过 |
+
+**调度（全自动）**：GitHub Actions `tokshop-engine.yml`（amd 仓）——trends 每 30 分钟、content 每 2 小时、seo-audit/health/reconcile 每日；本轮已实测 workflow_dispatch 全任务运行 conclusion=success。Vercel 项目已配置 `CRON_SECRET` 与 `INDEXNOW_KEY`（与 Actions secret 同值）。
+
+**对账不变量**：`/api/engine/reconcile` 每日校验 `sum(users.balance) = sum(已支付订单入账) − sum(usage_logs.cost)`，偏差 > $0.000001 记入 `engine.ops_log` 并报错。
+
 ## 边界与如实声明
 
 1. **支付**：Creem 商户账号尚未注册（法律要求实名主体，无法由 AI 代办）。当前 webhook 到账链路已按 Creem 官方规范（HMAC-SHA256 验签、`checkout.completed` 事件）实现并通过模拟签名事件全量测试；接入真实收款只需配置 3 个环境变量并重新部署（见 README）。

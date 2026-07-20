@@ -72,7 +72,8 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSONLD) }}
         />
         {children}
-      </body>
+        <script defer src="/_vercel/insights/script.js"></script>
+</body>
     </html>
   );
 }

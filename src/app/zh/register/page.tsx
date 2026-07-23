@@ -4,11 +4,11 @@ import AuthForm from "@/components/AuthForm";
 import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Create account",
+  title: "注册账号",
   description:
-    "Create a free TokShop account: get an OpenAI-compatible API key for DeepSeek, GLM, Qwen and Kimi in minutes.",
+    "免费注册 TokShop 账号:几分钟内获取 OpenAI 兼容 API Key,调用 DeepSeek、GLM、Qwen、Kimi。",
   alternates: {
-    canonical: `${SITE_URL}/register`,
+    canonical: `${SITE_URL}/zh/register`,
     languages: {
       en: `${SITE_URL}/register`,
       "zh-CN": `${SITE_URL}/zh/register`,
@@ -17,12 +17,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RegisterPage() {
+export default function RegisterPageZh() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Nav />
+    <div className="flex min-h-screen flex-col" lang="zh-CN">
+      <Nav locale="zh" />
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <AuthForm mode="register" />
+        <AuthForm mode="register" locale="zh" />
       </main>
     </div>
   );

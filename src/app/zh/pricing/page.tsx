@@ -5,11 +5,11 @@ import { SITE_URL } from "@/lib/site";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Pricing & API keys",
+  title: "价格与 API Key",
   description:
-    "Pay-as-you-go pricing for DeepSeek, GLM, Qwen and Kimi APIs. Register for an API key, top up prepaid credits, transparent USD per-token rates.",
+    "DeepSeek、GLM、Qwen、Kimi API 按量付费价格表。注册即可获取 API Key,预付余额充值,按 token 透明计价(美元)。",
   alternates: {
-    canonical: `${SITE_URL}/pricing`,
+    canonical: `${SITE_URL}/zh/pricing`,
     languages: {
       en: `${SITE_URL}/pricing`,
       "zh-CN": `${SITE_URL}/zh/pricing`,
@@ -18,6 +18,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PricingPage() {
-  return <PricingContent locale="en" />;
+export default function PricingPageZh() {
+  return <PricingContent locale="zh" />;
 }

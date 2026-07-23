@@ -11,6 +11,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/pricing`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/docs`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/blog`, changeFrequency: "hourly", priority: 0.8 },
+    // Chinese versions
+    { url: `${SITE_URL}/zh`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${SITE_URL}/zh/pricing`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE_URL}/zh/docs`, changeFrequency: "weekly", priority: 0.8 },
   ];
   const sql = getEngineSql();
   if (!sql) return statics;

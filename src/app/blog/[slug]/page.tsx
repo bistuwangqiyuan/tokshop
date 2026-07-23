@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Nav from "@/components/Nav";
+import Footer from "@/components/Footer";
 import { getArticle, getEngineSql, listArticles } from "@/lib/engine/db";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -104,6 +105,7 @@ export default async function ArticlePage({ params }: Props) {
           </section>
         )}
       </article>
+      <Footer />
     </div>
   );
 }

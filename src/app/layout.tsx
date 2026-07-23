@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { CONTACT_EMAIL, CONTACT_EMAIL_CN } from "@/lib/i18n";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -45,6 +46,21 @@ const ORG_JSONLD = {
       name: SITE_NAME,
       url: SITE_URL,
       description: SITE_DESCRIPTION,
+      email: CONTACT_EMAIL,
+      contactPoint: [
+        {
+          "@type": "ContactPoint",
+          contactType: "customer support",
+          email: CONTACT_EMAIL,
+          availableLanguage: ["English", "Chinese"],
+        },
+        {
+          "@type": "ContactPoint",
+          contactType: "customer support",
+          email: CONTACT_EMAIL_CN,
+          availableLanguage: ["Chinese"],
+        },
+      ],
     },
     {
       "@type": "WebSite",
@@ -73,7 +89,7 @@ export default function RootLayout({
         />
         {children}
         <script defer src="/_vercel/insights/script.js"></script>
-</body>
+      </body>
     </html>
   );
 }

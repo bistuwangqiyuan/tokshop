@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Dashboard from "@/components/Dashboard";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "控制台",
   robots: { index: false, follow: false },
 };
 
-export default function DashboardPage() {
-  return <Dashboard locale="en" />;
+export default function DashboardPageZh() {
+  return <Dashboard locale="zh" />;
 }

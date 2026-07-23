@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Nav from "@/components/Nav";
+import Footer from "@/components/Footer";
 import { getEngineSql, listArticles } from "@/lib/engine/db";
 import { SITE_URL } from "@/lib/site";
 
@@ -47,6 +48,7 @@ export default async function BlogPage() {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

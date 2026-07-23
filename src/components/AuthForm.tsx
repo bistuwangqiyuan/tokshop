@@ -3,9 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { dict, localePath, type Locale } from "@/lib/i18n";
 
-export default function AuthForm({ mode }: { mode: "login" | "register" }) {
+export default function AuthForm({
+  mode,
+  locale = "en",
+}: {
+  mode: "login" | "register";
+  locale?: Locale;
+}) {
   const router = useRouter();
+  const t = dict[locale].auth;
+  const p = (path: string) => localePath(locale, path);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,10 +32,10 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Request failed");
+        setError(data.error ?? t.requestFailed);
         return;
       }
-      router.push("/dashboard");
+      router.push(p("/dashboard"));
       router.refresh();
     } finally {
       setLoading(false);
@@ -36,11 +45,11 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
   return (
     <div className="mx-auto w-full max-w-sm rounded-lg border border-zinc-800 bg-zinc-900 p-8">
       <h1 className="text-xl font-semibold">
-        {mode === "login" ? "Sign in" : "Create your account"}
+        {mode === "login" ? t.signInTitle : t.registerTitle}
       </h1>
       <form onSubmit={submit} className="mt-6 space-y-4">
         <div>
-          <label className="block text-sm text-zinc-400">Email</label>
+          <label className="block text-sm text-zinc-400">{t.email}</label>
           <input
             type="email"
             required
@@ -51,7 +60,8 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
         </div>
         <div>
           <label className="block text-sm text-zinc-400">
-            Password{mode === "register" ? " (min 8 characters)" : ""}
+            {t.password}
+            {mode === "register" ? t.passwordHint : ""}
           </label>
           <input
             type="password"
@@ -68,26 +78,22 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
           disabled={loading}
           className="w-full rounded-md bg-emerald-500 py-2 font-medium text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
         >
-          {loading
-            ? "Please wait..."
-            : mode === "login"
-              ? "Sign in"
-              : "Create account"}
+          {loading ? t.wait : mode === "login" ? t.signIn : t.register}
         </button>
       </form>
       <p className="mt-4 text-sm text-zinc-500">
         {mode === "login" ? (
           <>
-            No account?{" "}
-            <Link href="/register" className="text-emerald-400 underline">
-              Register
+            {t.noAccount}{" "}
+            <Link href={p("/register")} className="text-emerald-400 underline">
+              {t.registerLink}
             </Link>
           </>
         ) : (
           <>
-            Already registered?{" "}
-            <Link href="/login" className="text-emerald-400 underline">
-              Sign in
+            {t.hasAccount}{" "}
+            <Link href={p("/login")} className="text-emerald-400 underline">
+              {t.signInLink}
             </Link>
           </>
         )}

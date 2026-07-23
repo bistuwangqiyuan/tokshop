@@ -4,10 +4,10 @@ import AuthForm from "@/components/AuthForm";
 import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Sign in",
-  description: "Sign in to your TokShop account to manage API keys and credits.",
+  title: "登录",
+  description: "登录 TokShop 账号,管理 API Key 与余额。",
   alternates: {
-    canonical: `${SITE_URL}/login`,
+    canonical: `${SITE_URL}/zh/login`,
     languages: {
       en: `${SITE_URL}/login`,
       "zh-CN": `${SITE_URL}/zh/login`,
@@ -17,12 +17,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function LoginPage() {
+export default function LoginPageZh() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Nav />
+    <div className="flex min-h-screen flex-col" lang="zh-CN">
+      <Nav locale="zh" />
       <main className="flex flex-1 items-center justify-center px-6 py-16">
-        <AuthForm mode="login" />
+        <AuthForm mode="login" locale="zh" />
       </main>
     </div>
   );

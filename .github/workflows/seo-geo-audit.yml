@@ -34,7 +34,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: External Lighthouse scores (PageSpeed Insights API)
+      - name: Lighthouse SEO scores (CLI, authoritative gate)
+        env:
+          BASE_URL: https://tokshop.xyz
+        run: node scripts/lighthouse.mjs
+      # Keyless PSI quota is tiny; becomes reliable once PSI_API_KEY is set.
+      - name: PageSpeed Insights API scores (optional)
+        continue-on-error: true
         env:
           BASE_URL: https://tokshop.xyz
           PSI_API_KEY: ${{ secrets.PSI_API_KEY }}

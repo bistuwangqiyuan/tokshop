@@ -24,7 +24,8 @@ Next.js on Vercel (tokshop.xyz)
 ## 技术栈
 
 - Next.js 16 (App Router, TypeScript) + Tailwind CSS 4，部署于 Vercel
-- 国际化：英文站点在根路径，中文站点在 `/zh` 子路径（首页/价格/文档/登录/注册/控制台），带 hreflang 互链与语言切换
+- 国际化：英文站点在根路径，中文站点在 `/zh` 子路径（首页/价格/文档/博客/登录/注册/控制台），带 hreflang 互链与语言切换；博客文章发布时自动翻译中文版
+- SEO/GEO 引擎：热词追踪 → 答案优先文章生成（TL;DR/FAQ/问句 H2）→ 对照实时价目的事实核查 QC → 中英双语发布 → IndexNow/WebSub 推送；每日自审（SEO 分 + GEO 分入库）+ GitHub Actions 每日 34 项 e2e 与 Lighthouse 评分（本轮 7/7 URL SEO=100，详见 `TEST_REPORT.md`）
 - Neon Postgres（Vercel Marketplace 集成，自动注入 `DATABASE_URL`）+ Drizzle ORM
 - 认证：邮箱+密码（bcrypt）+ JWT httpOnly cookie（jose）
 - 上游：Vercel AI Gateway（优先 `AI_GATEWAY_API_KEY`，否则用部署自带 OIDC token，零配置）
@@ -63,10 +64,17 @@ npm run dev
 ## 测试
 
 ```bash
+# 售卖链路（29 项）
 BASE_URL=https://tokshop.xyz CREEM_WEBHOOK_SECRET=... node tests/e2e.mjs
+# SEO/GEO（34 项：基础设施、JSON-LD、hreflang、内容引擎、翻译、审计 SEO=100 + GEO=100）
+BASE_URL=https://tokshop.xyz CRON_SECRET=... INDEXNOW_KEY=... node tests/seo-e2e.mjs
+# 外部 Lighthouse SEO 评分（要求全部 100）
+BASE_URL=https://tokshop.xyz node scripts/lighthouse.mjs
 ```
 
-29 项断言覆盖：注册/登录/会话、Key 生命周期、价目接口、真实上游调用（非流式+流式）的精确计费复算、余额不足 402、无效 Key 401、webhook 验签/到账/幂等（事件级+订单级双层）、用量账单一致性、生产域名可用性。详见 `TEST_REPORT.md`。
+售卖 29 项断言覆盖：注册/登录/会话、Key 生命周期、价目接口、真实上游调用（非流式+流式）的精确计费复算、余额不足 402、无效 Key 401、webhook 验签/到账/幂等（事件级+订单级双层）、用量账单一致性、生产域名可用性。详见 `TEST_REPORT.md`。
+
+以上三套在 GitHub Actions 每日自动运行（`seo-geo-audit.yml` 审计评分、`engine-scheduler.yml` 引擎调度）。
 
 ## 切换 Creem 正式收款（唯一人工步骤）
 

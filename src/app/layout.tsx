@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: `${SITE_NAME} - Open-Source LLM Tokens, Pay As You Go`,
     description: SITE_DESCRIPTION,
   },
@@ -46,6 +46,13 @@ const ORG_JSONLD = {
       name: SITE_NAME,
       url: SITE_URL,
       description: SITE_DESCRIPTION,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/logo.svg`,
+        width: 512,
+        height: 512,
+      },
+      sameAs: ["https://github.com/bistuwangqiyuan/tokshop"],
       email: CONTACT_EMAIL,
       contactPoint: [
         {

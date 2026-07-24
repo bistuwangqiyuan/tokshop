@@ -1,7 +1,7 @@
 import { marked } from "marked";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { getArticle, getEngineSql, listArticles } from "@/lib/engine/db";
@@ -16,28 +16,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const sql = getEngineSql();
   const a = sql ? await getArticle(sql, slug) : null;
-  if (!a) return { title: "Not found" };
-  const canonical = `${SITE_URL}/blog/${a.slug}`;
+  if (!a?.zh_title || !a.zh_body_md) return { title: "Not found" };
+  const canonical = `${SITE_URL}/zh/blog/${a.slug}`;
   return {
-    // no brand suffix on article titles: keep <65 chars (SERP truncation line)
-    title: { absolute: a.title },
-    description: a.description,
+    title: { absolute: a.zh_title },
+    description: a.zh_description || a.description,
     keywords: a.keywords?.length ? a.keywords : undefined,
     alternates: {
       canonical,
-      ...(a.zh_body_md
-        ? {
-            languages: {
-              en: canonical,
-              "zh-CN": `${SITE_URL}/zh/blog/${a.slug}`,
-              "x-default": canonical,
-            },
-          }
-        : {}),
+      languages: {
+        en: `${SITE_URL}/blog/${a.slug}`,
+        "zh-CN": canonical,
+        "x-default": `${SITE_URL}/blog/${a.slug}`,
+      },
     },
     openGraph: {
-      title: a.title,
-      description: a.description,
+      title: a.zh_title,
+      description: a.zh_description || a.description,
       type: "article",
       url: canonical,
       publishedTime: a.published_at || a.created_at,
@@ -46,14 +41,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ArticlePage({ params }: Props) {
+export default async function ArticlePageZh({ params }: Props) {
   const { slug } = await params;
   const sql = getEngineSql();
   if (!sql) notFound();
   const a = await getArticle(sql, slug);
   if (!a) notFound();
+  // Translation not ready yet: send readers to the English original
+  if (!a.zh_title || !a.zh_body_md) redirect(`/blog/${slug}`);
 
-  const all = await listArticles(sql, 50);
+  const all = (await listArticles(sql, 50)).filter(
+    (x) => x.zh_title && x.zh_body_md
+  );
   const related = all
     .filter((x) => x.slug !== a.slug)
     .sort((x, y) => {
@@ -63,21 +62,21 @@ export default async function ArticlePage({ params }: Props) {
     })
     .slice(0, 4);
 
-  const html = await marked.parse(a.body_md);
-  const canonical = `${SITE_URL}/blog/${a.slug}`;
+  const html = await marked.parse(a.zh_body_md);
+  const canonical = `${SITE_URL}/zh/blog/${a.slug}`;
   const published = a.published_at || a.created_at;
   const modified = a.updated_at || published;
-  const faq = extractFaq(a.body_md);
+  const faq = extractFaq(a.zh_body_md);
 
   const graph: object[] = [
     {
       "@type": "Article",
       "@id": `${canonical}#article`,
-      headline: a.title,
-      description: a.description,
+      headline: a.zh_title,
+      description: a.zh_description || a.description,
       datePublished: published,
       dateModified: modified,
-      inLanguage: "en",
+      inLanguage: "zh-CN",
       keywords: a.keywords?.join(", ") || undefined,
       image: `${SITE_URL}/blog/${a.slug}/opengraph-image`,
       author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
@@ -93,9 +92,9 @@ export default async function ArticlePage({ params }: Props) {
       "@type": "BreadcrumbList",
       "@id": `${canonical}#breadcrumb`,
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-        { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
-        { "@type": "ListItem", position: 3, name: a.title, item: canonical },
+        { "@type": "ListItem", position: 1, name: "首页", item: `${SITE_URL}/zh` },
+        { "@type": "ListItem", position: 2, name: "博客", item: `${SITE_URL}/zh/blog` },
+        { "@type": "ListItem", position: 3, name: a.zh_title, item: canonical },
       ],
     },
   ];
@@ -113,51 +112,46 @@ export default async function ArticlePage({ params }: Props) {
   const jsonLd = { "@context": "https://schema.org", "@graph": graph };
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Nav />
+    <div className="flex min-h-screen flex-col" lang="zh-CN">
+      <Nav locale="zh" />
       <article className="mx-auto w-full max-w-3xl flex-1 px-6 py-14">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <nav aria-label="Breadcrumb" className="mb-2 text-xs text-zinc-500">
-          <Link href="/" className="text-emerald-400 hover:underline">
-            Home
+        <nav aria-label="面包屑" className="mb-2 text-xs text-zinc-500">
+          <Link href="/zh" className="text-emerald-400 hover:underline">
+            首页
           </Link>
           {" / "}
-          <Link href="/blog" className="text-emerald-400 hover:underline">
-            Blog
+          <Link href="/zh/blog" className="text-emerald-400 hover:underline">
+            博客
           </Link>
           {" / "}
-          <span className="text-zinc-400">{a.title}</span>
+          <span className="text-zinc-400">{a.zh_title}</span>
         </nav>
         <p className="mb-2 text-xs text-zinc-500">
-          Published{" "}
+          发布于{" "}
           <time dateTime={new Date(published).toISOString()}>
             {new Date(published).toISOString().slice(0, 10)}
           </time>
           {modified !== published && (
             <>
-              {" · Updated "}
+              {" · 更新于 "}
               <time dateTime={new Date(modified).toISOString()}>
                 {new Date(modified).toISOString().slice(0, 10)}
               </time>
             </>
           )}
-          {" · AI-generated, automated fact-check against live catalog"}
-          {a.zh_body_md && (
-            <>
-              {" · "}
-              <Link
-                href={`/zh/blog/${a.slug}`}
-                className="text-emerald-400 hover:underline"
-              >
-                中文版
-              </Link>
-            </>
-          )}
+          {" · AI 生成,已对照实时价目自动事实核查 · "}
+          <Link
+            href={`/blog/${a.slug}`}
+            className="text-emerald-400 hover:underline"
+          >
+            English
+          </Link>
         </p>
-        <h1 className="mb-6 text-3xl font-bold">{a.title}</h1>
+        <h1 className="mb-6 text-3xl font-bold">{a.zh_title}</h1>
         <div
           className="prose prose-invert prose-zinc max-w-none
                      prose-headings:font-semibold prose-a:text-emerald-400
@@ -165,23 +159,25 @@ export default async function ArticlePage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: html }}
         />
         <div className="mt-10 rounded-lg border border-zinc-800 p-5 text-sm">
-          <div className="mb-1 font-semibold">Try it now</div>
+          <div className="mb-1 font-semibold">立即体验</div>
           <p className="text-zinc-400">
-            All models discussed are live on our OpenAI-compatible API with
-            transparent per-token pricing.{" "}
-            <Link href="/pricing" className="text-emerald-400 underline">
-              See pricing and get a key →
+            文中提到的模型都已上线我们的 OpenAI 兼容 API,按 token 透明计价。{" "}
+            <Link href="/zh/pricing" className="text-emerald-400 underline">
+              查看价格并获取 API Key →
             </Link>
           </p>
         </div>
         {related.length > 0 && (
           <section className="mt-10">
-            <h2 className="mb-3 font-semibold">Related articles</h2>
+            <h2 className="mb-3 font-semibold">相关文章</h2>
             <ul className="space-y-2 text-sm">
               {related.map((r) => (
                 <li key={r.slug}>
-                  <Link href={`/blog/${r.slug}`} className="text-emerald-400 hover:underline">
-                    {r.title}
+                  <Link
+                    href={`/zh/blog/${r.slug}`}
+                    className="text-emerald-400 hover:underline"
+                  >
+                    {r.zh_title}
                   </Link>
                 </li>
               ))}
@@ -189,7 +185,7 @@ export default async function ArticlePage({ params }: Props) {
           </section>
         )}
       </article>
-      <Footer />
+      <Footer locale="zh" />
     </div>
   );
 }

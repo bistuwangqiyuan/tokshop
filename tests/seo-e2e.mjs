@@ -46,6 +46,29 @@ async function main() {
   const docs = await (await fetch(`${BASE}/docs`)).text();
   check("S09 FAQPage JSON-LD on docs", docs.includes('"FAQPage"'));
 
+  // ---------- S6 GEO hardening (og images, AI crawlers, zh locale) ----------
+  check("S22 og:image + twitter:card on home",
+    /property="og:image"/.test(home) && /name="twitter:card"/.test(home));
+  check("S23 Organization logo + sameAs + contactPoint on home",
+    home.includes('"logo"') && home.includes('"sameAs"') &&
+    home.includes('"contactPoint"'));
+  check("S24 robots.txt explicitly allows AI crawlers",
+    ["GPTBot", "ClaudeBot", "PerplexityBot", "Google-Extended", "CCBot"]
+      .every((ua) => rbText.includes(ua)));
+  const zhHome = await fetch(`${BASE}/zh`);
+  const zhHomeText = await zhHome.text();
+  // Note: React renders the attribute camelCased as hrefLang= — match /i.
+  check("S25 zh home 200 + reciprocal hreflang",
+    zhHome.status === 200 && /hreflang="en"/i.test(zhHomeText) &&
+    /hreflang="zh-CN"/i.test(zhHomeText));
+  const zhPricing = await (await fetch(`${BASE}/zh/pricing`)).text();
+  const zhDocs = await (await fetch(`${BASE}/zh/docs`)).text();
+  check("S26 OfferCatalog on pricing (en+zh) + FAQPage on zh docs",
+    pricing.includes('"OfferCatalog"') && zhPricing.includes('"OfferCatalog"') &&
+    zhDocs.includes('"FAQPage"'));
+  const zhBlog = await fetch(`${BASE}/zh/blog`);
+  check("S27 zh blog index 200", zhBlog.status === 200);
+
   // ---------- S3 engine endpoints ----------
   const noAuth = await fetch(`${BASE}/api/engine/trends`, { method: "POST" });
   check("S10 engine endpoints reject unauthenticated 401", noAuth.status === 401);
@@ -90,6 +113,27 @@ async function main() {
   check("S19 new article in sitemap + RSS",
     sm2.includes(ctBody.slug) && rss2.includes(ctBody.slug));
 
+  // ---------- S7 answer-first article structure + Chinese twin ----------
+  check("S28 article answer-first structure (TL;DR + FAQ + question H2)",
+    /TL;?DR/i.test(art) && /"FAQPage"/.test(art) &&
+    /"BreadcrumbList"/.test(art) && /"dateModified"/.test(art));
+  check("S29 article og:image + dateModified in JSON-LD",
+    /property="og:image"/.test(art));
+  check("S30 content engine produced Chinese translation",
+    ctBody.zh?.ok === true, JSON.stringify(ctBody.zh).slice(0, 120));
+  if (ctBody.zh?.ok) {
+    const zhArtResp = await fetch(`${BASE}/zh/blog/${ctBody.slug}`);
+    const zhArt = await zhArtResp.text();
+    check("S31 zh article 200 + Article JSON-LD (zh-CN) + hreflang pair",
+      zhArtResp.status === 200 && zhArt.includes('"zh-CN"') &&
+      /hreflang="en"/i.test(zhArt) && zhArt.includes('"Article"'));
+    check("S32 zh article in sitemap", sm2.includes(`/zh/blog/${ctBody.slug}`));
+  } else {
+    check("S31 zh article 200 + Article JSON-LD (zh-CN) + hreflang pair", false,
+      "translation failed");
+    check("S32 zh article in sitemap", false, "translation failed");
+  }
+
   // ---------- S5 self-audit engine ----------
   const audit = await fetch(`${BASE}/api/engine/seo-audit`, {
     method: "POST",
@@ -102,7 +146,11 @@ async function main() {
     `score=${auditBody.score}`);
   check("S21 seo-audit zero page issues",
     (auditBody.pages || []).every((p) => p.issues.length === 0),
-    JSON.stringify((auditBody.pages || []).filter((p) => p.issues.length).map((p) => [p.url, p.issues])).slice(0, 200));
+    JSON.stringify((auditBody.pages || []).filter((p) => p.issues.length).map((p) => [p.url, p.issues])).slice(0, 300));
+  check("S33 SEO score = 100", auditBody.score === 100, `score=${auditBody.score}`);
+  const geoFails = (auditBody.geo_checks || []).filter((c) => c.value < 1);
+  check("S34 GEO score = 100", auditBody.geo === 100,
+    `geo=${auditBody.geo}${geoFails.length ? " failing=" + JSON.stringify(geoFails).slice(0, 240) : ""}`);
 
   const fails = results.filter((r) => !r.ok);
   console.log(`\n== ${results.length - fails.length}/${results.length} PASS, FAIL ${fails.length} ==`);

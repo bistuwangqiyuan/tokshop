@@ -18,7 +18,7 @@ export default function Nav({ locale = "en" }: { locale?: Locale }) {
           <Link href={p("/docs")} className="hover:text-white">
             {t.docs}
           </Link>
-          <Link href="/blog" className="hover:text-white">
+          <Link href={p("/blog")} className="hover:text-white">
             {t.blog}
           </Link>
           <Link href={p("/login")} className="hover:text-white">

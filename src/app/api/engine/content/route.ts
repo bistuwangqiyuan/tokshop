@@ -7,6 +7,7 @@ import {
   pushIndexNow,
   pushWebSub,
   seedTopics,
+  translateArticle,
 } from "@/lib/engine/content";
 import { SITE_URL } from "@/lib/site";
 
@@ -84,10 +85,37 @@ async function run() {
     if (!result.ok && result.reason?.startsWith("slug exists")) break;
   }
 
-  // 3. cache refresh + push (only on successful publish)
+  // 3. Chinese translation (same row; article is still live in English if
+  // translation fails — the zh page then redirects to the English one)
+  let translation: Record<string, unknown> = {};
+  if (result.ok && result.slug) {
+    try {
+      const rows = await sql`
+        SELECT id, slug, title, description, body_md
+        FROM engine.articles WHERE slug = ${result.slug} LIMIT 1`;
+      if (rows.length) {
+        const tr = await translateArticle(
+          sql,
+          rows[0] as Parameters<typeof translateArticle>[1]
+        );
+        translation = { zh: tr };
+      }
+    } catch (e) {
+      translation = { zh: { ok: false, reason: String(e).slice(0, 200) } };
+    }
+  }
+
+  // 4. cache refresh + push (only on successful publish)
   let push: Record<string, unknown> = {};
   if (result.ok && result.slug) {
-    for (const p of ["/sitemap.xml", "/rss.xml", "/llms.txt", "/llms-full.txt", "/blog"]) {
+    for (const p of [
+      "/sitemap.xml",
+      "/rss.xml",
+      "/llms.txt",
+      "/llms-full.txt",
+      "/blog",
+      "/zh/blog",
+    ]) {
       try {
         revalidatePath(p);
       } catch {
@@ -95,8 +123,11 @@ async function run() {
       }
     }
     const url = `${SITE_URL}/blog/${result.slug}`;
+    const zhOk = (translation.zh as { ok?: boolean } | undefined)?.ok;
+    const urls = [url, `${SITE_URL}/blog`, `${SITE_URL}/sitemap.xml`];
+    if (zhOk) urls.splice(1, 0, `${SITE_URL}/zh/blog/${result.slug}`);
     const [idx, websub] = await Promise.all([
-      pushIndexNow([url, `${SITE_URL}/blog`, `${SITE_URL}/sitemap.xml`])
+      pushIndexNow(urls)
         .catch((e) => ({ ok: false, status: 0, detail: String(e).slice(0, 120) })),
       pushWebSub().catch(() => ({ ok: false, status: 0 })),
     ]);
@@ -107,6 +138,7 @@ async function run() {
     source: source.kind,
     topic: source.kind === "trend" ? source.keyword : source.topic,
     ...result,
+    ...translation,
     ...push,
   };
   await sql`

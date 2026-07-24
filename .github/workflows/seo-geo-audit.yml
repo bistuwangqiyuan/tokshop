@@ -1,0 +1,48 @@
+# Daily SEO/GEO audit against production — fully automated, no humans needed.
+# - seo-e2e: 30+ assertions (infra, JSON-LD, hreflang, engine pipeline, audit)
+# - psi: external Lighthouse scores via Google PageSpeed Insights API
+# Complements the engine scheduler (trends/content/reconcile) that runs from
+# the ops repository; this workflow only verifies and scores.
+name: seo-geo-audit
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # daily 03:17 UTC
+  workflow_dispatch: {}
+
+jobs:
+  seo-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run SEO/GEO e2e suite against production
+        env:
+          BASE_URL: https://tokshop.xyz
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: node tests/seo-e2e.mjs
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: External Lighthouse scores (PageSpeed Insights API)
+        env:
+          BASE_URL: https://tokshop.xyz
+          PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
+        run: node scripts/psi.mjs
+      - name: Archive Lighthouse JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: psi-results
+          path: psi-results/
+          retention-days: 90

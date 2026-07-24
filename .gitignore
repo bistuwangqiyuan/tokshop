@@ -46,3 +46,6 @@ next-env.d.ts
 # local test run logs
 *.log
 content-debug.json
+
+# Lighthouse/PSI raw archives (summary is quoted in TEST_REPORT.md)
+/psi-results/

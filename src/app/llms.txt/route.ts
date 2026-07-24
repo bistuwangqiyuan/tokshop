@@ -43,7 +43,7 @@ ${modelLines || "- See GET /v1/models"}
 - [Pricing](${SITE_URL}/pricing)
 - [API documentation](${SITE_URL}/docs)
 - [Blog](${SITE_URL}/blog)
-- [中文首页](${SITE_URL}/zh) · [价格](${SITE_URL}/zh/pricing) · [文档](${SITE_URL}/zh/docs)
+- [中文首页](${SITE_URL}/zh) · [价格](${SITE_URL}/zh/pricing) · [文档](${SITE_URL}/zh/docs) · [博客](${SITE_URL}/zh/blog)
 
 ## Contact
 

@@ -6,21 +6,58 @@ import { db, schema } from "@/lib/db";
 import { dict, localePath, type Locale } from "@/lib/i18n";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
-const PRODUCT_JSONLD = {
-  "@context": "https://schema.org",
-  "@type": "Product",
-  name: `${SITE_NAME} prepaid API credits`,
-  description:
-    "Prepaid credits for an OpenAI-compatible API serving open-source models (DeepSeek, GLM, Qwen, Kimi) with per-token billing.",
-  brand: { "@type": "Organization", name: SITE_NAME },
-  offers: [5, 20, 100].map((usd) => ({
-    "@type": "Offer",
-    price: usd,
-    priceCurrency: "USD",
-    url: `${SITE_URL}/pricing`,
-    availability: "https://schema.org/InStock",
-  })),
-};
+/**
+ * Product (prepaid credits) + OfferCatalog with live per-model USD prices
+ * per 1M tokens, generated from the sales database so structured data can
+ * never drift from the visible price table.
+ */
+function pricingJsonLd(models: (typeof schema.models.$inferSelect)[]) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Product",
+        name: `${SITE_NAME} prepaid API credits`,
+        description:
+          "Prepaid credits for an OpenAI-compatible API serving open-source models (DeepSeek, GLM, Qwen, Kimi) with per-token billing.",
+        brand: { "@type": "Organization", name: SITE_NAME },
+        offers: [5, 20, 100].map((usd) => ({
+          "@type": "Offer",
+          price: usd,
+          priceCurrency: "USD",
+          url: `${SITE_URL}/pricing`,
+          availability: "https://schema.org/InStock",
+        })),
+      },
+      {
+        "@type": "OfferCatalog",
+        name: `${SITE_NAME} model pricing (USD per 1M tokens)`,
+        url: `${SITE_URL}/pricing`,
+        itemListElement: models.map((m) => ({
+          "@type": "Offer",
+          name: `${m.displayName} (${m.slug})`,
+          url: `${SITE_URL}/pricing`,
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          priceSpecification: [
+            {
+              "@type": "UnitPriceSpecification",
+              price: Number(m.inputPricePerM),
+              priceCurrency: "USD",
+              unitText: "1M input tokens",
+            },
+            {
+              "@type": "UnitPriceSpecification",
+              price: Number(m.outputPricePerM),
+              priceCurrency: "USD",
+              unitText: "1M output tokens",
+            },
+          ],
+        })),
+      },
+    ],
+  };
+}
 
 export default async function PricingContent({ locale }: { locale: Locale }) {
   const t = dict[locale].pricing;
@@ -44,7 +81,7 @@ export default async function PricingContent({ locale }: { locale: Locale }) {
     >
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(PRODUCT_JSONLD) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd(models)) }}
       />
       <Nav locale={locale} />
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-14">

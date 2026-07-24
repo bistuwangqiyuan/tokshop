@@ -69,6 +69,11 @@ export const dict = {
       ctaKey: "Get your API key",
       ctaDocs: "Read the docs",
     },
+    blog: {
+      title: "Blog",
+      sub: "Guides on open-source model APIs, pricing and cost engineering. Articles are AI-generated from live trend signals, fact-checked against our real catalog, and reviewed by automated QC.",
+      empty: "First articles are being generated — check back shortly.",
+    },
     docs: {
       title: "API Documentation",
       intro: "TokShop exposes an OpenAI-compatible API. Base URL:",
@@ -197,6 +202,11 @@ export const dict = {
       prepaid: "预付额度",
       ctaKey: "获取 API Key",
       ctaDocs: "查看文档",
+    },
+    blog: {
+      title: "博客",
+      sub: "开源大模型 API、价格与成本工程指南。文章由 AI 基于实时趋势信号生成,并对照真实价目自动事实核查、通过自动化质检后发布。",
+      empty: "首批文章正在生成中,请稍后再来。",
     },
     docs: {
       title: "API 文档",

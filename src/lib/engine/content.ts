@@ -1,5 +1,6 @@
 import { aiGenerate } from "./ai";
-import type { Sql } from "./db";
+import type { Article, Sql } from "./db";
+import { extractFaq, hasQuestionHeading, hasTldr } from "./extract";
 import { SITE_URL } from "@/lib/site";
 
 /**
@@ -107,7 +108,34 @@ export type ArticleQc = {
   wordCount: number;
 };
 
-export function qcArticle(md: string, title: string): ArticleQc {
+/**
+ * Fact-check gate: every "$X per 1M/million tokens" claim in the body must
+ * match a price in the live catalog (input, output, or a documented credit
+ * pack). This is the machine-verifiable subset of "facts about TokShop";
+ * softer claims are governed by the factsheet-only prompt rule.
+ */
+export function factCheckPrices(md: string, models: CatalogModel[]): string[] {
+  const allowed = new Set<number>();
+  for (const m of models) {
+    allowed.add(Number(m.input_price_per_m));
+    allowed.add(Number(m.output_price_per_m));
+  }
+  const issues: string[] = [];
+  const perMillion =
+    /\$(\d+(?:\.\d+)?)\s*(?:\/|per\s+)\s*(?:1\s?M|million)(?:\s+tokens)?/gi;
+  for (const match of md.matchAll(perMillion)) {
+    const price = Number(match[1]);
+    if (!allowed.has(price))
+      issues.push(`price not in live catalog: "${match[0].trim()}"`);
+  }
+  return issues;
+}
+
+export function qcArticle(
+  md: string,
+  title: string,
+  opts?: { models?: CatalogModel[]; requireStructure?: boolean }
+): ArticleQc {
   const issues: string[] = [];
   const wordCount = md.split(/\s+/).length;
   if (title.length > 68) issues.push(`title too long: ${title.length} chars (>68)`);
@@ -119,6 +147,13 @@ export function qcArticle(md: string, title: string): ArticleQc {
   }
   if (!/^##\s/m.test(md)) issues.push("no H2 sections");
   if ((md.match(/\]\(/g) || []).length < 1) issues.push("no links at all");
+  if (opts?.models) issues.push(...factCheckPrices(md, opts.models));
+  if (opts?.requireStructure) {
+    // GEO extractability requirements (answer-first content)
+    if (!hasTldr(md)) issues.push("missing TL;DR blockquote at top");
+    if (extractFaq(md).length < 2) issues.push("missing FAQ section (>=2 Q&A)");
+    if (!hasQuestionHeading(md)) issues.push("no question-style H2");
+  }
   return { pass: issues.length === 0, issues, wordCount };
 }
 
@@ -132,8 +167,16 @@ Hard rules:
 2. EXTERNAL FACTS: be conservative. If uncertain, say "as of recent reports"
    or omit. Never fabricate benchmark numbers or quotes.
 3. No hype, no guarantees, no "best in the world" claims. Honest trade-offs.
-4. Structure: short intro (no H1 - it is added separately), 3-6 H2 sections,
-   practical code snippets where helpful (curl / Python), a short conclusion.
+4. Structure (answer-first, optimized for both readers and AI retrieval):
+   - The body MUST start with a blockquote "> **TL;DR:** ..." (2-3 sentences
+     that directly answer the topic).
+   - 3-6 H2 sections; at least one H2 phrased as a question people actually
+     ask (ending with "?"). Open every section with the direct answer in the
+     first sentence, then supporting detail.
+   - Paragraphs of 2-3 sentences; use bullet lists and tables for
+     comparisons; practical code snippets where helpful (curl / Python).
+   - The body MUST end with a "## FAQ" H2 containing exactly 3 "### <question>?"
+     subsections, each answered in 1-3 sentences.
 5. 700-1500 words. Include 1-2 natural internal links to ${SITE_URL}/pricing
    or ${SITE_URL}/docs where genuinely relevant.
 6. If the topic came from a trending keyword, address the actual search intent
@@ -224,7 +267,11 @@ FACTSHEET:\n${facts}`;
   // boundary instead of discarding an otherwise good draft.
   if (draft.title.length > 68) draft.title = shortenTitle(draft.title, 68);
 
-  const qc = qcArticle(draft.body_md, draft.title);
+  const models = await catalogModels(sql);
+  const qc = qcArticle(draft.body_md, draft.title, {
+    models,
+    requireStructure: true,
+  });
   if (!qc.pass) return { ok: false, qc, reason: `qc failed: ${qc.issues.join("; ")}` };
 
   const dup = await sql`
@@ -271,6 +318,115 @@ export async function pushIndexNow(
     status: res.status,
     detail: res.ok ? "" : (await res.text().catch(() => "")).slice(0, 160),
   };
+}
+
+const TRANSLATOR_SYSTEM = `You are a professional technical translator.
+Translate the given English Markdown article to Simplified Chinese for
+Chinese developers.
+
+Hard rules:
+1. Preserve the Markdown structure exactly: same headings hierarchy, lists,
+   tables, blockquotes. The "> **TL;DR:**" blockquote stays a blockquote
+   (translate as "> **太长不看:**"). The "## FAQ" heading becomes "## 常见问题",
+   keeping its "### question" subsections.
+2. Do NOT translate: code blocks, inline code, URLs, product/model names
+   (DeepSeek, GLM, Qwen, Kimi, TokShop), API field names, dollar prices.
+3. Natural, precise technical Chinese; no additions, no omissions.
+
+OUTPUT FORMAT — exactly this header block, then a line with only "---", then
+the translated Markdown body:
+TITLE: <Chinese title, max 40 characters>
+DESCRIPTION: <Chinese meta description, 60-90 characters>
+---
+<translated markdown body>`;
+
+/** Translate a published article to Chinese and store it on the same row. */
+export async function translateArticle(
+  sql: Sql,
+  article: Pick<Article, "id" | "slug" | "title" | "description" | "body_md">
+): Promise<{ ok: boolean; reason?: string; model?: string }> {
+  const { text, model } = await aiGenerate({
+    system: TRANSLATOR_SYSTEM,
+    prompt: `TITLE: ${article.title}\nDESCRIPTION: ${article.description}\n---\n${article.body_md}`,
+    maxOutputTokens: 8000,
+    temperature: 0.2,
+  });
+  const draft = parseDraft(text);
+  const zhTitle = draft.title.slice(0, 60);
+  const zhBody = draft.body_md;
+
+  // Translation QC: structure must survive the round trip
+  const issues: string[] = [];
+  if (!zhTitle || !/[\u4e00-\u9fff]/.test(zhTitle)) issues.push("no Chinese title");
+  if (zhBody.length < 400) issues.push(`translated body too short: ${zhBody.length} chars`);
+  if (!/^##\s/m.test(zhBody)) issues.push("no H2 sections in translation");
+  const enH2 = (article.body_md.match(/^##\s/gm) || []).length;
+  const zhH2 = (zhBody.match(/^##\s/gm) || []).length;
+  if (Math.abs(enH2 - zhH2) > 2)
+    issues.push(`H2 count drift: en=${enH2} zh=${zhH2}`);
+  if (issues.length) return { ok: false, reason: issues.join("; "), model };
+
+  await sql`
+    UPDATE engine.articles
+    SET zh_title = ${zhTitle},
+        zh_description = ${(draft.description || "").slice(0, 160)},
+        zh_body_md = ${zhBody}
+    WHERE id = ${article.id}`;
+  return { ok: true, model };
+}
+
+const RETROFIT_SYSTEM = `You are the staff editor for TokShop. Upgrade the
+given English Markdown article to an answer-first structure WITHOUT changing
+its factual content or overall message.
+
+Required changes only:
+1. Add a "> **TL;DR:** ..." blockquote (2-3 sentences summarizing the
+   article's direct answer) as the very first block.
+2. If no H2 is phrased as a question, rephrase the most suitable existing H2
+   as a natural question ending with "?". Keep all other headings.
+3. Append a "## FAQ" H2 with exactly 3 "### <question>?" subsections answered
+   in 1-3 sentences, derived strictly from the article's existing content.
+4. Keep everything else verbatim: same facts, prices, code blocks and links.
+   Never invent new facts, prices or models.
+
+OUTPUT: the full upgraded Markdown body only. No wrapper, no code fence,
+no title header.`;
+
+/**
+ * Retrofit an existing article to the answer-first structure (TL;DR + FAQ +
+ * question H2). Runs the same QC + price fact-check gate as new content;
+ * on failure the original body is kept untouched.
+ */
+export async function retrofitArticle(
+  sql: Sql,
+  article: Pick<Article, "id" | "slug" | "title" | "body_md">
+): Promise<{ ok: boolean; reason?: string; model?: string }> {
+  const { text, model } = await aiGenerate({
+    system: RETROFIT_SYSTEM,
+    prompt: article.body_md,
+    maxOutputTokens: 8000,
+    temperature: 0.3,
+  });
+  const body = text
+    .replace(/^```(?:markdown|md)?\s*/i, "")
+    .replace(/```\s*$/, "")
+    .trim();
+
+  const models = await catalogModels(sql);
+  const qc = qcArticle(body, article.title, { models, requireStructure: true });
+  if (!qc.pass) return { ok: false, reason: `qc failed: ${qc.issues.join("; ")}`, model };
+
+  // Guard against silent rewrites: the upgraded body must retain most of the
+  // original prose (>= 60% of original length).
+  if (body.length < article.body_md.length * 0.6)
+    return { ok: false, reason: "retrofit shrank the article too much", model };
+
+  await sql`
+    UPDATE engine.articles
+    SET body_md = ${body}, updated_at = now(),
+        qc_report = ${JSON.stringify(qc)}::jsonb
+    WHERE id = ${article.id}`;
+  return { ok: true, model };
 }
 
 /** WebSub: broadcast RSS updates to the public hub (no token needed). */

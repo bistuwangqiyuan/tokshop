@@ -22,7 +22,7 @@ export default function Footer({ locale = "en" }: { locale?: Locale }) {
           {t.pricing}
         </Link>{" "}
         ·{" "}
-        <Link href="/blog" className="underline hover:text-zinc-300">
+        <Link href={p("/blog")} className="underline hover:text-zinc-300">
           {t.blog}
         </Link>
       </p>

@@ -15,6 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/zh`, changeFrequency: "daily", priority: 0.9 },
     { url: `${SITE_URL}/zh/pricing`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE_URL}/zh/docs`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE_URL}/zh/blog`, changeFrequency: "hourly", priority: 0.7 },
   ];
   const sql = getEngineSql();
   if (!sql) return statics;
@@ -23,9 +24,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...statics,
     ...articles.map((a) => ({
       url: `${SITE_URL}/blog/${a.slug}`,
-      lastModified: a.published_at ? new Date(a.published_at) : undefined,
+      lastModified: a.updated_at
+        ? new Date(a.updated_at)
+        : a.published_at
+          ? new Date(a.published_at)
+          : undefined,
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
+    ...articles
+      .filter((a) => a.zh_title && a.zh_body_md)
+      .map((a) => ({
+        url: `${SITE_URL}/zh/blog/${a.slug}`,
+        lastModified: a.updated_at
+          ? new Date(a.updated_at)
+          : a.published_at
+            ? new Date(a.published_at)
+            : undefined,
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      })),
   ];
 }

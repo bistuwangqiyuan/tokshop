@@ -5,7 +5,12 @@ import BuyDownloadForm from "@/components/BuyDownloadForm";
 import { availableRails } from "@/lib/checkout";
 import { resolveEntitlement } from "@/lib/entitlement";
 import { dict, localePath, type Locale } from "@/lib/i18n";
-import { DOWNLOAD_PRODUCTS, usdToCny } from "@/lib/products";
+import {
+  DOWNLOAD_PRODUCTS,
+  formatCny,
+  formatUsd,
+  usdToCny,
+} from "@/lib/products";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { availableChannels } from "@/lib/xunhupay";
 
@@ -82,6 +87,19 @@ export default async function DownloadsContent({ locale }: { locale: Locale }) {
                 <p className="mt-1 text-xs text-zinc-500">
                   {t.version} {product.version} · {info.pages}
                 </p>
+                {/* Price lives here rather than only on the buy button, so it is
+                    still stated when no payment rail is configured. */}
+                <p className="mt-4 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-emerald-400">
+                    {formatUsd(product.usd)}
+                  </span>
+                  {rails.includes("xunhupay") && (
+                    <span className="text-sm text-zinc-400">
+                      / {formatCny(usdToCny(product.usd))}
+                    </span>
+                  )}
+                  <span className="text-xs text-zinc-500">{t.oneTime}</span>
+                </p>
                 <p className="mt-4 text-sm leading-relaxed text-zinc-300">
                   {info.summary}
                 </p>
@@ -134,6 +152,7 @@ export default async function DownloadsContent({ locale }: { locale: Locale }) {
                     locale={locale}
                     rails={rails}
                     walletChannels={walletChannels}
+                    usdAmount={product.usd}
                     cnyAmount={usdToCny(product.usd)}
                   />
                 )}

@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { dict, type Locale } from "@/lib/i18n";
-import type { Rail, XunhuChannel } from "@/lib/products";
+import {
+  formatCny,
+  formatUsd,
+  type Rail,
+  type XunhuChannel,
+} from "@/lib/products";
 
 type Method =
   | { rail: "creem" }
@@ -13,12 +18,14 @@ export default function BuyDownloadForm({
   locale,
   rails,
   walletChannels,
+  usdAmount,
   cnyAmount,
 }: {
   sku: string;
   locale: Locale;
   rails: Rail[];
   walletChannels: XunhuChannel[];
+  usdAmount: number;
   cnyAmount: number;
 }) {
   const t = dict[locale].downloads;
@@ -110,8 +117,8 @@ export default function BuyDownloadForm({
               : p.wechat;
           const note = isCard ? p.cardNote : p.walletNote;
           const price = isCard
-            ? "$1.00"
-            : `¥${cnyAmount.toFixed(2)} (${p.approx} $1.00)`;
+            ? formatUsd(usdAmount)
+            : `${formatCny(cnyAmount)} (${p.approx} ${formatUsd(usdAmount)})`;
           return (
             <button
               key={isCard ? "creem" : `xunhupay-${method.channel}`}

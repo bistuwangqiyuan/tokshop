@@ -97,9 +97,10 @@ async function main() {
   check("S38 downloads canonical + reciprocal hreflang",
     dlText.includes(`rel="canonical" href="${BASE}/downloads"`) &&
     /hreflang="zh-CN"/i.test(dlText) && /hreflang="en"/i.test(zhDlText));
-  // The CNY button only renders once the domestic rail is configured, so only
-  // the USD price is asserted unconditionally.
-  check("S39 downloads states the USD price", dlText.includes("$1.00"));
+  // The price must be stated on the product card itself, not only on the buy
+  // button, which does not render until a payment rail is configured.
+  check("S39 downloads states the USD price in both locales",
+    dlText.includes("$1.00") && zhDlText.includes("$1.00"));
   check("S40 legal pages linked from every footer",
     home.includes("/terms") && home.includes("/refund") &&
     home.includes("/privacy") && home.includes("/downloads"));

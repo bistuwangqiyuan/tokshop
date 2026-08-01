@@ -52,3 +52,6 @@ content-debug.json
 
 # Lighthouse/PSI raw archives (summary is quoted in TEST_REPORT.md)
 /psi-results/
+
+# agent scratch plans
+/.cursor/plans/

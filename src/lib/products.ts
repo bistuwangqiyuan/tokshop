@@ -94,6 +94,14 @@ export function findDownloadProduct(sku: string): DownloadProduct | undefined {
   return DOWNLOAD_PRODUCTS.find((p) => p.sku === sku);
 }
 
+export function formatUsd(usd: number): string {
+  return `$${usd.toFixed(2)}`;
+}
+
+export function formatCny(cny: number): string {
+  return `¥${cny.toFixed(2)}`;
+}
+
 /** USD reference rate for the CNY-native domestic rail. */
 export function cnyPerUsd(): number {
   const raw = Number(process.env.CNY_PER_USD);

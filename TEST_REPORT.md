@@ -141,9 +141,35 @@ assert round(upstream * 1.5, 8) == 0.00000546    # 零售价 = 成本 x 1.5，�
 3. **售卖 T8 回归失败根因**:`CREEM_WEBHOOK_SECRET` 是 Vercel Sensitive 类型变量,`vercel env pull` 只能拿到 `[SENSITIVE]` 占位符,测试端签名永远错误(历史通过是因为当时创建密钥的会话内存中有真值)→ 轮换为新密钥(真值仅保存在本地 gitignored 文件,不入仓库),重新部署后 29/29 连续两轮恢复。
 4. **引擎调度中断**:GitHub 账号计费失败导致私有仓 Actions 全面停摆(amd 仓 tokshop-engine 调度自 7/24 起全部失败)→ tokshop 仓转公有(README 本就公开宣称该仓为代码仓库,仓内与历史均无密钥,已扫描确认),调度迁入本仓 `engine-scheduler.yml`(trends/30min、content/2h、审计+对账+回填/每日),旧 workflow 已停用避免恢复计费后双跑;迁移后 workflow_dispatch 实测 success。
 
+## 支付与付费下载验收(2026-08-01 追加)
+
+- 测试对象：https://tokshop.xyz 生产环境（本轮新增双支付通道、$1 首充、付费下载专区、三个法务页）
+- 测试方式：`tests/e2e.mjs` 扩到 **56 项**断言、`tests/seo-e2e.mjs` 扩到 **46 项**断言，全部对生产发起真实 HTTP 请求
+- 数据库变更方式：新增 `/api/engine/migrate` 端点执行幂等 DDL（`ADD COLUMN IF NOT EXISTS` / `DROP NOT NULL` / `CREATE INDEX IF NOT EXISTS`），本轮 10 条语句全部成功、0 失败；不用 `drizzle-kit push` 是因为本仓 `engine` schema 由原生 SQL 管理，push 会提议删表
+
+| # | 验收标准 | 断言 | 结果 |
+|---|---|---|---|
+| 1 | $1 首充每账号限一次 | T11 x5（下单、结算精确入账 $1、二次下单 409 `starter_pack_used`、其他档位不受影响、未知 SKU 400） | 通过 |
+| 2 | 游客无账号可买下载 | T12 x3（无会话建单成功、非法邮箱 400、未知商品 400） | 通过 |
+| 3 | 未付款不可取文档 | T13 x4（无凭据 401、伪造兑换码 401、只买过额度的账号 401、兑换码查询 404） | 通过 |
+| 4 | 三种凭证交付 + 自动关联 | T14 x9（webhook 结算、同邮箱注册自动关联订单、控制台可见、生成 `TSK-` 兑换码、下载附件头、附录实时价格已替换、中文版交付、兑换码换 Cookie、纯兑换码直取） | 通过 |
+| 5 | 国内通道回调安全 | T15 x2（错误 MD5 签名 401、无签名回调绝不回 `success`） | 通过 |
+| 6 | 退款回收额度 | T16 x2（`refund.created` 触发 `reversed=true`、余额精确扣回 $5） | 通过 |
+| 7 | 法务页 SEO 达标 | S35/S36 x6（`/terms`、`/refund`、`/privacy` 中英六页 200 + canonical 自指 + hreflang 互指 + 进 sitemap） | 通过 |
+| 8 | 下载页 SEO 达标 | S37–S42（Product+Offer JSON-LD、canonical、hreflang、中英均显示价格、Footer 入口、llms.txt 收录、交付页 noindex 且拒绝伪造链接） | 通过 |
+| 9 | 全站 SEO/GEO 不回退 | S33/S34（SEO=100、GEO=100，新增 4 组页面后审计零问题页） | 通过 |
+
+本轮发现并修复的真实缺陷（如实记录）：
+
+1. **下载页在支付通道未开通时不显示价格**：价格原本硬编码在支付按钮里（`"$1.00"` 字面量），而支付按钮只在至少一条通道配置后才渲染 —— 通道未开通时页面结构化数据声明 $1 但正文不着一字，既是转化缺陷也是结构化数据与可见内容不一致。修复：价格移到商品卡本体、始终渲染，金额改为从 `src/lib/products.ts` 读取并经新增的 `formatUsd`/`formatCny` 格式化；S39 同时断言中英两个语言版本都写明价格。
+2. **测试签名密钥再次踩到 `[SENSITIVE]`**：`vercel env pull` 对 Sensitive 变量只返回占位符（与 7-25 记录的第 3 条同因），首轮 18 项 FAIL 全部源自此；改用本地 gitignored 的 `.env.creem.local` 真值后 56/56 通过。
+3. **本机构建被同一占位符打挂**：把 pull 下来的变量导入 shell 后 `APP_URL=[SENSITIVE]`，`src/app/layout.tsx` 的 `metadataBase: new URL(SITE_URL)` 抛 `ERR_INVALID_URL`，页面数据收集阶段失败。这是本机环境污染而非代码缺陷（Vercel 构建同代码通过）；清理后 TypeScript 与 `npm run lint` 均零错误。
+
+**尚未开通的部分（如实声明）**：Creem 与虎皮椒商户账号需实名 KYC，AI 无法代办，因此生产环境目前 `availableRails()` 为空 —— 下载页与控制台会显示"在线支付正在开通中"并给出人工联系方式，订单仍会落库为 `pending`，账号开通后配置环境变量重新部署即自动接管。上述 T11/T14/T16 的结算链路是用与生产一致的密钥签名、走真实 webhook 路由与真实 `settleOrder` 执行的，无测试旁路；虎皮椒无沙箱，其正向支付需开户后用真实 ¥7.3 自购验证（见 `PAYMENTS_SETUP.md`）。
+
 ## 边界与如实声明
 
-1. **支付**：Creem 商户账号尚未注册（法律要求实名主体，无法由 AI 代办）。当前 webhook 到账链路已按 Creem 官方规范（HMAC-SHA256 验签、`checkout.completed` 事件）实现并通过模拟签名事件全量测试；接入真实收款只需配置 3 个环境变量并重新部署（见 README）。
+1. **支付**：Creem 与虎皮椒商户账号均尚未注册（法律要求实名主体，无法由 AI 代办）。两条通道的建单、验签、幂等、结算、退款回收链路已按各自官方规范实现并全量测试（Creem HMAC-SHA256；虎皮椒 MD5 验签 + 回调后二次回查金额）；接入真实收款只需按 `PAYMENTS_SETUP.md` 配置环境变量并重新部署，代码无需改动。
 2. **上游额度**：当前上游走 Vercel AI Gateway 账户额度，本轮全部测试实际消耗 < $0.01。
 3. **T8 的"模拟"边界**：模拟的是 Creem 服务器发出 HTTP 请求这一动作（用与生产一致的密钥签名），验签、幂等、入账逻辑均为生产代码真实执行，无任何测试专用旁路。
 4. **llms.txt**：Google 已公开声明不使用 llms.txt；保留它是面向其他 AI 引擎与工具的低成本机读入口，不据此宣称任何 Google 收益。

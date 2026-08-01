@@ -92,6 +92,18 @@ async function main() {
   );
   console.log(`\n== SEO>=${MIN_SEO}: ${summary.length - failed}/${summary.length} PASS ==`);
   console.table(summary);
+
+  // Keyless PSI daily quota is tiny. Treat "every URL hit 429 and none scored"
+  // as skipped rather than failed — the Lighthouse CLI step is the gate.
+  const allQuota =
+    failed > 0 &&
+    summary.every((row) => typeof row.error === "string" && row.error.includes("429"));
+  if (allQuota && !KEY) {
+    console.log(
+      "PSI skipped: keyless daily quota exhausted. Set PSI_API_KEY to enable this step."
+    );
+    return;
+  }
   if (failed) process.exit(1);
 }
 

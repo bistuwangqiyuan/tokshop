@@ -157,19 +157,28 @@ assert round(upstream * 1.5, 8) == 0.00000546    # 零售价 = 成本 x 1.5，�
 | 6 | 退款回收额度 | T16 x2（`refund.created` 触发 `reversed=true`、余额精确扣回 $5） | 通过 |
 | 7 | 法务页 SEO 达标 | S35/S36 x6（`/terms`、`/refund`、`/privacy` 中英六页 200 + canonical 自指 + hreflang 互指 + 进 sitemap） | 通过 |
 | 8 | 下载页 SEO 达标 | S37–S42（Product+Offer JSON-LD、canonical、hreflang、中英均显示价格、Footer 入口、llms.txt 收录、交付页 noindex 且拒绝伪造链接） | 通过 |
-| 9 | 全站 SEO/GEO 不回退 | S33/S34（SEO=100、GEO=100，新增 4 组页面后审计零问题页） | 通过 |
+| 9 | 全站 SEO/GEO 不回退 | S33/S34（SEO=100、GEO=100）；另用 `?articles=100` 复查**全量存档 110 页**（16 个营销页 + 46 篇文章的中英双页），0 问题页、SEO=100、GEO=100 | 通过 |
+| 10 | 外部 Lighthouse SEO | GitHub Actions run [30710108515](https://github.com/bistuwangqiyuan/tokshop/actions/runs/30710108515)：Lighthouse CLI **11/11 SEO=100**（含新增 `/downloads`、`/terms`、`/refund`、`/privacy`）；seo-e2e **46/46** | 通过 |
 
 本轮发现并修复的真实缺陷（如实记录）：
 
+0. **每日审计自 7-30 起连夜失败，根因是审计自己算错了长度**：`sk-hynix-profit-surge-ai-chip-demand-llm-costs` 的标题 `SK Hynix Profit Surge: What It Means for AI Chip Demand & LLM Costs` 实际 67 字符，但其中的 `&` 在 HTML 里渲染为 `&amp;`，审计直接量取原始 `<title>` 文本得 71，误判「title too long」，扣 2.5 分并使 CI 每晚红灯（7-31、8-01 两次定时运行均因此失败）。本机复跑却是 100 分 —— 因为审计只看最近 10 篇，那篇已被新文章挤出窗口，缺陷被掩盖而非修好。修复：长度判定前先解码 HTML 实体（描述同理）。
+0b. **中文描述被英文阈值误判**：把审计窗口扩到全站 110 页后暴露最后一处问题 —— `/zh/blog/hackers-ai-apis-developers` 的中文描述 37 字符被判「description too short (37)」，而它是一句完整表述，与 125 字符的英文版信息量相当。40 这个下限是为拉丁文字选的。修复：两条长度规则改为按**显示宽度**度量（CJK 与全角字符计 2），这也更贴近搜索引擎按像素宽度截断的实际行为。改规则前先测了全站数据再动手：中文标题最大宽度 56（上限 70）、所有描述宽度 ≥ 68，因此无一页被新判为问题。
+0c. **审计窗口写死 10 篇，老文章永远不再被复查**：上面两处缺陷正是因此长期潜伏。新增 `?articles=N`（上限 100），可按需复查全量存档；定时任务仍用 10 篇以控制单次时长。修复后全站 **110 页、SEO=100、GEO=100、0 问题页**（含那篇 `&` 标题文章，issues 为空）。
+0d. **SEO 测试套件会崩而不是报错**：内容引擎本轮无新题可发时返回 `ok:false`，而 `JSON.stringify(undefined).slice(...)` 抛异常，导致其后 12 项断言（含 SEO/GEO 分数门槛）根本没跑。修复：该处改为空值安全；S12 输出引擎自报的 `reason`；文章质量类断言在无新文时回退审计站上最新一篇，使「引擎本轮没发文」与「文章质量不合格」不再混为一谈。
 1. **下载页在支付通道未开通时不显示价格**：价格原本硬编码在支付按钮里（`"$1.00"` 字面量），而支付按钮只在至少一条通道配置后才渲染 —— 通道未开通时页面结构化数据声明 $1 但正文不着一字，既是转化缺陷也是结构化数据与可见内容不一致。修复：价格移到商品卡本体、始终渲染，金额改为从 `src/lib/products.ts` 读取并经新增的 `formatUsd`/`formatCny` 格式化；S39 同时断言中英两个语言版本都写明价格。
 2. **测试签名密钥再次踩到 `[SENSITIVE]`**：`vercel env pull` 对 Sensitive 变量只返回占位符（与 7-25 记录的第 3 条同因），首轮 18 项 FAIL 全部源自此；改用本地 gitignored 的 `.env.creem.local` 真值后 56/56 通过。
 3. **本机构建被同一占位符打挂**：把 pull 下来的变量导入 shell 后 `APP_URL=[SENSITIVE]`，`src/app/layout.tsx` 的 `metadataBase: new URL(SITE_URL)` 抛 `ERR_INVALID_URL`，页面数据收集阶段失败。这是本机环境污染而非代码缺陷（Vercel 构建同代码通过）；清理后 TypeScript 与 `npm run lint` 均零错误。
 
-**尚未开通的部分（如实声明）**：Creem 与虎皮椒商户账号需实名 KYC，AI 无法代办，因此生产环境目前 `availableRails()` 为空 —— 下载页与控制台会显示"在线支付正在开通中"并给出人工联系方式，订单仍会落库为 `pending`，账号开通后配置环境变量重新部署即自动接管。上述 T11/T14/T16 的结算链路是用与生产一致的密钥签名、走真实 webhook 路由与真实 `settleOrder` 执行的，无测试旁路；虎皮椒无沙箱，其正向支付需开户后用真实 ¥7.3 自购验证（见 `PAYMENTS_SETUP.md`）。
+**尚未开通的部分（如实声明）**：
+
+- **Creem（2026-08-01 更新）**：账号已注册，KYC / 店铺审核进行中。审核期间可拿 **Test Mode** API Key 先跑通全流程（不收真钱）；live 密钥要等审核通过。生产环境目前未配置 `CREEM_API_KEY`，因此 `availableRails()` 仍为空 —— 下载页与控制台显示「在线支付正在开通中」，订单仍会落库为 `pending`。拿到 test 或 live 密钥后写入 Vercel 并重新部署即可自动启用。
+- **虎皮椒**：尚未开户。无沙箱，正向支付需开户后用真实 ¥7.3 自购验证（见 `PAYMENTS_SETUP.md`）。
+- 上述 T11/T14/T16 的结算链路是用与生产一致的密钥签名、走真实 webhook 路由与真实 `settleOrder` 执行的，无测试旁路。
 
 ## 边界与如实声明
 
-1. **支付**：Creem 与虎皮椒商户账号均尚未注册（法律要求实名主体，无法由 AI 代办）。两条通道的建单、验签、幂等、结算、退款回收链路已按各自官方规范实现并全量测试（Creem HMAC-SHA256；虎皮椒 MD5 验签 + 回调后二次回查金额）；接入真实收款只需按 `PAYMENTS_SETUP.md` 配置环境变量并重新部署，代码无需改动。
+1. **支付**：Creem 已注册、审核中；虎皮椒尚未开户（法律要求实名主体，AI 无法代办）。两条通道的建单、验签、幂等、结算、退款回收链路已按各自官方规范实现并全量测试（Creem HMAC-SHA256；虎皮椒 MD5 验签 + 回调后二次回查金额）；接入真实收款只需按 `PAYMENTS_SETUP.md` 配置环境变量并重新部署，代码无需改动。
 2. **上游额度**：当前上游走 Vercel AI Gateway 账户额度，本轮全部测试实际消耗 < $0.01。
 3. **T8 的"模拟"边界**：模拟的是 Creem 服务器发出 HTTP 请求这一动作（用与生产一致的密钥签名），验签、幂等、入账逻辑均为生产代码真实执行，无任何测试专用旁路。
 4. **llms.txt**：Google 已公开声明不使用 llms.txt；保留它是面向其他 AI 引擎与工具的低成本机读入口，不据此宣称任何 Google 收益。

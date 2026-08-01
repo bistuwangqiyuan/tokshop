@@ -26,7 +26,16 @@
 
 费率 3.9% + $0.40/笔；新账户前 €1,000 收入 0% 手续费。
 
-### 开户步骤
+### 当前进度（2026-08-01）
+
+- [x] 账号已注册（王启源 / 个人）
+- [ ] KYC / 店铺审核中（通常 24–48 小时，高峰可到 72 小时）
+- [ ] 拿到 **Test Mode** API Key → 立刻可跑通全流程（不收真钱）
+- [ ] 审核通过 → 换 live Key，设 `CREEM_TEST_MODE=false`，收真钱
+
+审核期间请先做下面「测试模式」一节；不要等 live 通过才动手。
+
+### 开户步骤（备查）
 
 1. 注册 https://creem.io
 2. Business Details：以**个人（Individual）**身份提交，网站填 `https://tokshop.xyz`
@@ -37,16 +46,35 @@
 4. Payout Account：**个人身份只能绑支付宝**（企业身份才能绑对公银行卡）
    - 支付宝账户的实名姓名必须与 KYC 身份**严格一致**，否则提现会被拒
 5. 等待 Creem 团队审核，通常 24–48 小时
-6. 审核通过后创建 Webhook：
+6. 审核通过后创建 **live** Webhook：
    - URL：`https://tokshop.xyz/api/webhooks/creem`
    - 记下 Webhook Signing Secret
 
-### 需要交给我的三个值
+### 测试模式（审核期间就能做）
+
+Test Mode 与 live 完全隔离：独立 API Key、独立商品、独立 Webhook。侧边栏底部打开 **Test Mode** 开关后：
+
+1. Developers → 复制 **Test** API Key（形如 `creem_test_…`）
+2. Developers → Webhooks → 新建测试 Webhook  
+   - URL：`https://tokshop.xyz/api/webhooks/creem`  
+   - 事件至少勾选：`checkout.completed`、`refund.created`、`dispute.created`  
+   - 记下测试环境的 Signing Secret
+3. 把下面三个值发给我（或直接写进 Vercel Production，然后告诉我已写入）：
+
+| 环境变量 | 值 |
+| --- | --- |
+| `CREEM_API_KEY` | Test Mode 的 API Key |
+| `CREEM_WEBHOOK_SECRET` | Test Mode 的 Webhook Signing Secret（会覆盖现有测试密钥） |
+| `CREEM_TEST_MODE` | 不要填，或填 `true`（**切勿填 `false`**，否则会打到 live API） |
+
+收到后我会：写入环境变量 → 重新部署 → 用测试卡跑通登录充值、游客买下载、交付页、兑换码找回；证据写进 `TEST_REPORT.md`。
+
+### 审核通过后要交给我的三个值（正式收款）
 
 | 环境变量 | 从哪里取 |
 | --- | --- |
-| `CREEM_API_KEY` | Creem 后台 Developers → API Key（**live** 的那个，不是 test） |
-| `CREEM_WEBHOOK_SECRET` | 上一步创建 Webhook 时显示的签名密钥 |
+| `CREEM_API_KEY` | Creem 后台关掉 Test Mode → Developers → API Key（**live**） |
+| `CREEM_WEBHOOK_SECRET` | live Webhook 的签名密钥（在 live 模式下新建，URL 同上） |
 | `CREEM_TEST_MODE` | 填 `false`（不填或填其他值都会走测试环境，收不到真钱） |
 
 ### 提现须知

@@ -25,16 +25,26 @@ export const maxDuration = 300;
  * machine-checkable boolean or fraction, so any third party can recompute
  * the score from public URLs.
  */
+/**
+ * Daily runs audit the newest articles only, which keeps the run short but
+ * means an older page can never be re-checked. `?articles=N` widens the window
+ * on demand, up to the whole archive.
+ */
+function articleWindow(req: Request): number {
+  const asked = Number(new URL(req.url).searchParams.get("articles"));
+  return Number.isFinite(asked) && asked > 0 ? Math.min(asked, 100) : 10;
+}
+
 export async function POST(req: Request) {
   if (!verifyCron(req))
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  return run();
+  return run(articleWindow(req));
 }
 
 export async function GET(req: Request) {
   if (!verifyCron(req))
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  return run();
+  return run(articleWindow(req));
 }
 
 type PageAudit = {
@@ -168,7 +178,7 @@ async function auditPage(
   return { url, status, issues, jsonLdTypes };
 }
 
-async function run() {
+async function run(articleLimit: number) {
   const sql = getEngineSql();
   if (!sql)
     return NextResponse.json({ error: "database not configured" }, { status: 503 });
@@ -181,7 +191,7 @@ async function run() {
     "/zh", "/zh/pricing", "/zh/docs", "/zh/blog", "/zh/downloads",
     "/zh/terms", "/zh/refund", "/zh/privacy",
   ];
-  const articles = await listArticles(sql, 10);
+  const articles = await listArticles(sql, articleLimit);
   const audits: PageAudit[] = [];
   for (const p of staticPaths) audits.push(await auditPage(p, "page"));
   for (const a of articles) {

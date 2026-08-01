@@ -14,7 +14,18 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 const BASE = (process.env.BASE_URL ?? "https://tokshop.xyz").replace(/\/$/, "");
 const MIN_SEO = Number(process.env.MIN_SEO ?? 100);
 
-const PATHS = ["/", "/pricing", "/docs", "/blog", "/zh", "/zh/pricing"];
+const PATHS = [
+  "/",
+  "/pricing",
+  "/docs",
+  "/blog",
+  "/zh",
+  "/zh/pricing",
+  "/downloads",
+  "/terms",
+  "/refund",
+  "/privacy",
+];
 
 async function main() {
   console.log(`# Lighthouse CLI — ${BASE} — ${new Date().toISOString()}`);

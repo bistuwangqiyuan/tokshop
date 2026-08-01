@@ -28,12 +28,30 @@ type Totals = {
   totalOutput: number;
   totalCost: string;
 };
-
-const PACKS = [5, 10, 20, 50, 100];
+type Rail = "creem" | "xunhupay";
+type Channel = "alipay" | "wechat";
+type Pack = {
+  sku: string;
+  usd: number;
+  cny: number;
+  oncePerAccount: boolean;
+  used: boolean;
+};
+type Options = { rails: Rail[]; channels: Channel[]; packs: Pack[] };
+type MyDownload = {
+  orderId: string;
+  sku: string;
+  title: string;
+  version: string;
+  redeemCode: string | null;
+  paidAt: string | null;
+};
 
 export default function Dashboard({ locale = "en" }: { locale?: Locale }) {
   const router = useRouter();
   const t = dict[locale].dash;
+  const pay = dict[locale].pay;
+  const dl = dict[locale].downloads;
   const p = (path: string) => localePath(locale, path);
   const [me, setMe] = useState<Me | null>(null);
   const [keys, setKeys] = useState<Key[]>([]);
@@ -42,6 +60,10 @@ export default function Dashboard({ locale = "en" }: { locale?: Locale }) {
   const [newKey, setNewKey] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [options, setOptions] = useState<Options | null>(null);
+  const [downloads, setDownloads] = useState<MyDownload[]>([]);
+  const [rail, setRail] = useState<Rail | null>(null);
+  const [channel, setChannel] = useState<Channel | null>(null);
 
   const load = useCallback(async () => {
     const meRes = await fetch("/api/auth/me");
@@ -50,16 +72,24 @@ export default function Dashboard({ locale = "en" }: { locale?: Locale }) {
       return;
     }
     const meData = await meRes.json();
-    const [keysRes, usageRes] = await Promise.all([
+    const [keysRes, usageRes, optionsRes, downloadsRes] = await Promise.all([
       fetch("/api/keys"),
       fetch("/api/usage"),
+      fetch("/api/checkout/options"),
+      fetch(`/api/downloads/mine?lang=${locale}`),
     ]);
     const keysData = await keysRes.json();
     const usageData = await usageRes.json();
+    const optionsData: Options = await optionsRes.json();
+    const downloadsData = await downloadsRes.json();
     setMe(meData.user);
     setKeys(keysData.keys ?? []);
     setLogs(usageData.logs ?? []);
     setTotals(usageData.totals ?? null);
+    setOptions(optionsData);
+    setDownloads(downloadsData.downloads ?? []);
+    setRail((current) => current ?? optionsData.rails[0] ?? null);
+    setChannel((current) => current ?? optionsData.channels[0] ?? null);
   }, [router, locale]);
 
   useEffect(() => {
@@ -99,25 +129,34 @@ export default function Dashboard({ locale = "en" }: { locale?: Locale }) {
     }
   }
 
-  async function topUp(amount: number) {
+  async function topUp(sku: string) {
     setBusy(true);
     setMsg(null);
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({
+          sku,
+          locale,
+          ...(rail ? { rail } : {}),
+          ...(rail === "xunhupay" && channel ? { channel } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setMsg(data.error ?? t.checkoutFailed);
+        setMsg(
+          data.error === "starter_pack_used"
+            ? pay.starterUsed
+            : (data.message ?? data.error ?? t.checkoutFailed)
+        );
         return;
       }
       if (!data.checkoutUrl) {
-        setMsg(t.pendingPayment);
+        setMsg(pay.noRails);
         return;
       }
-      window.location.href = data.checkoutUrl;
+      window.location.assign(data.checkoutUrl);
     } finally {
       setBusy(false);
     }
@@ -184,18 +223,120 @@ export default function Dashboard({ locale = "en" }: { locale?: Locale }) {
         <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-6">
           <h2 className="font-semibold">{t.topUpTitle}</h2>
           <p className="mt-1 text-sm text-zinc-400">{t.topUpSub}</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {PACKS.map((pack) => (
-              <button
-                key={pack}
-                disabled={busy}
-                onClick={() => topUp(pack)}
-                className="rounded-md border border-emerald-600 px-5 py-2 text-emerald-400 hover:bg-emerald-950 disabled:opacity-50"
-              >
-                ${pack}
-              </button>
-            ))}
+
+          {(options?.rails.length ?? 0) === 0 ? (
+            <p className="mt-4 text-sm text-amber-300">{pay.noRails}</p>
+          ) : (
+            <>
+              {(options?.rails.length ?? 0) > 1 && (
+                <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                  {options?.rails.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRail(r)}
+                      className={`rounded-md border px-3 py-1.5 ${
+                        rail === r
+                          ? "border-emerald-500 text-emerald-300"
+                          : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                      }`}
+                    >
+                      {r === "creem" ? pay.card : pay.walletNote}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {rail === "xunhupay" && (options?.channels.length ?? 0) > 1 && (
+                <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                  {options?.channels.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setChannel(c)}
+                      className={`rounded-md border px-3 py-1.5 ${
+                        channel === c
+                          ? "border-emerald-500 text-emerald-300"
+                          : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                      }`}
+                    >
+                      {c === "alipay" ? pay.alipay : pay.wechat}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="mt-4 flex flex-wrap gap-3">
+                {options?.packs.map((pack) => {
+                  const blocked = pack.oncePerAccount && pack.used;
+                  return (
+                    <button
+                      key={pack.sku}
+                      disabled={busy || blocked}
+                      title={blocked ? pay.starterUsed : undefined}
+                      onClick={() => topUp(pack.sku)}
+                      className="rounded-md border border-emerald-600 px-5 py-2 text-emerald-400 hover:bg-emerald-950 disabled:cursor-not-allowed disabled:border-zinc-700 disabled:text-zinc-600 disabled:hover:bg-transparent"
+                    >
+                      ${pack.usd}
+                      {rail === "xunhupay" && (
+                        <span className="ml-2 text-xs text-zinc-500">
+                          ¥{pack.cny.toFixed(2)}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-semibold">{dl.myDownloads}</h2>
+            <Link
+              href={p("/downloads")}
+              className="text-sm text-emerald-400 underline hover:text-emerald-300"
+            >
+              {dl.browseDownloads}
+            </Link>
           </div>
+          {downloads.length === 0 ? (
+            <p className="mt-3 text-sm text-zinc-500">{dl.noDownloads}</p>
+          ) : (
+            <ul className="mt-4 space-y-4">
+              {downloads.map((d) => (
+                <li
+                  key={d.orderId}
+                  className="rounded-md border border-zinc-800 p-4"
+                >
+                  <p className="text-sm font-medium">{d.title}</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {dl.version} {d.version}
+                    {d.redeemCode && (
+                      <>
+                        {" · "}
+                        {dl.redeemCode}:{" "}
+                        <span className="select-all font-mono text-zinc-400">
+                          {d.redeemCode}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                    <Link
+                      href={p(`/downloads/${d.sku}/read`)}
+                      className="text-emerald-400 underline hover:text-emerald-300"
+                    >
+                      {dl.readOnline}
+                    </Link>
+                    <a
+                      href={`/api/downloads/${d.sku}?lang=${locale}`}
+                      className="text-emerald-400 underline hover:text-emerald-300"
+                    >
+                      {dl.downloadMd}
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-6">

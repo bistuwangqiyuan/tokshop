@@ -24,6 +24,23 @@ export default function Footer({ locale = "en" }: { locale?: Locale }) {
         ·{" "}
         <Link href={p("/blog")} className="underline hover:text-zinc-300">
           {t.blog}
+        </Link>{" "}
+        ·{" "}
+        <Link href={p("/downloads")} className="underline hover:text-zinc-300">
+          {t.downloads}
+        </Link>
+      </p>
+      <p className="mt-2">
+        <Link href={p("/terms")} className="underline hover:text-zinc-300">
+          {t.terms}
+        </Link>{" "}
+        ·{" "}
+        <Link href={p("/refund")} className="underline hover:text-zinc-300">
+          {t.refund}
+        </Link>{" "}
+        ·{" "}
+        <Link href={p("/privacy")} className="underline hover:text-zinc-300">
+          {t.privacy}
         </Link>
       </p>
       <p className="mt-2">

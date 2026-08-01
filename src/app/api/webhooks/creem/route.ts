@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { verifyWebhookSignature } from "@/lib/creem";
+import { reverseOrder, settleOrder } from "@/lib/orders";
 
 type CreemEvent = {
   id: string;
@@ -10,9 +10,40 @@ type CreemEvent = {
     id?: string;
     request_id?: string | null;
     metadata?: Record<string, string> | null;
-    order?: { amount?: number; currency?: string } | null;
+    order?: {
+      id?: string;
+      request_id?: string | null;
+      metadata?: Record<string, string> | null;
+      amount?: number;
+      currency?: string;
+    } | null;
   };
 };
+
+/** Grants access or credits. */
+const PAID_EVENTS = new Set(["checkout.completed"]);
+
+/** Takes it back. Creem also fires dispute events, which we treat the same. */
+const REVERSAL_EVENTS = new Set([
+  "refund.created",
+  "dispute.created",
+  "dispute.lost",
+]);
+
+/**
+ * Creem does not put the order reference in the same place for every event, so
+ * look through the shapes we know about rather than assuming one.
+ */
+function extractOrderId(event: CreemEvent): string | null {
+  const o = event.object;
+  return (
+    o?.request_id ??
+    o?.metadata?.orderId ??
+    o?.order?.request_id ??
+    o?.order?.metadata?.orderId ??
+    null
+  );
+}
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -46,37 +77,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
-  if (event.eventType === "checkout.completed") {
-    const orderId =
-      event.object?.request_id ?? event.object?.metadata?.orderId ?? null;
+  if (PAID_EVENTS.has(event.eventType)) {
+    const orderId = extractOrderId(event);
     if (!orderId) {
       return NextResponse.json({ error: "Missing order id" }, { status: 400 });
     }
-
-    // Idempotency layer 2: only a pending order can transition to paid.
-    const updated = await db
-      .update(schema.orders)
-      .set({
-        status: "paid",
-        paidAt: new Date(),
-        providerOrderId: event.object?.id ?? null,
-      })
-      .where(
-        and(eq(schema.orders.id, orderId), eq(schema.orders.status, "pending"))
-      )
-      .returning({
-        userId: schema.orders.userId,
-        credits: schema.orders.credits,
-      });
-
-    if (updated.length > 0) {
-      const { userId, credits } = updated[0];
-      await db
-        .update(schema.users)
-        .set({ balance: sql`${schema.users.balance} + ${credits}` })
-        .where(eq(schema.users.id, userId));
-    }
+    // Idempotency layer 2: settleOrder only acts on a pending order, and does
+    // the status flip and the balance credit in one atomic statement.
+    const settled = await settleOrder({
+      orderId,
+      providerOrderId: event.object?.id ?? null,
+    });
+    return NextResponse.json({ ok: true, settled: settled !== null });
   }
 
-  return NextResponse.json({ ok: true });
+  if (REVERSAL_EVENTS.has(event.eventType)) {
+    const orderId = extractOrderId(event);
+    if (!orderId) {
+      return NextResponse.json({ error: "Missing order id" }, { status: 400 });
+    }
+    const reversed = await reverseOrder(orderId);
+    return NextResponse.json({ ok: true, reversed });
+  }
+
+  return NextResponse.json({ ok: true, ignored: event.eventType });
 }

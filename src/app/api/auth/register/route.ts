@@ -3,6 +3,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { hashPassword, setSessionCookie } from "@/lib/auth";
+import { claimGuestOrders } from "@/lib/orders";
 
 const bodySchema = z.object({
   email: z.string().email().max(255),
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
     .values({ email, passwordHash })
     .returning({ id: schema.users.id, email: schema.users.email });
 
+  // Downloads bought as a guest with this email now belong to the account.
+  const claimed = await claimGuestOrders(user.id, email);
+
   await setSessionCookie(user.id);
-  return NextResponse.json({ user }, { status: 201 });
+  return NextResponse.json({ user, claimedOrders: claimed }, { status: 201 });
 }

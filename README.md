@@ -15,10 +15,11 @@
 Next.js on Vercel (tokshop.xyz)
    ├─ /v1/chat/completions   OpenAI 兼容代理（流式+非流式），鉴权→余额校验→转发→按 usage 扣费
    ├─ /v1/models             公开价目（USD / 1M tokens）
-   ├─ /api/*                 注册/登录/Key 管理/用量/充值/webhook
+   ├─ /api/*                 注册/登录/Key 管理/用量/充值/结账/webhook/付费下载
    ├─ Neon Postgres          用户、Key、模型价目、用量日志、订单、webhook 幂等表
    ├─ Vercel AI Gateway      上游模型（DeepSeek/GLM/Kimi/Qwen），OIDC 自动鉴权
-   └─ Creem (MoR)            收款，webhook 验签自动到账
+   ├─ Creem (MoR)            全球卡 / Apple Pay / Google Pay，HMAC 验签自动到账
+   └─ 虎皮椒                  支付宝 / 微信支付（国内），MD5 验签 + 回查核对后到账
 ```
 
 ## 技术栈
@@ -29,7 +30,13 @@ Next.js on Vercel (tokshop.xyz)
 - Neon Postgres（Vercel Marketplace 集成，自动注入 `DATABASE_URL`）+ Drizzle ORM
 - 认证：邮箱+密码（bcrypt）+ JWT httpOnly cookie（jose）
 - 上游：Vercel AI Gateway（优先 `AI_GATEWAY_API_KEY`，否则用部署自带 OIDC token，零配置）
-- 支付：Creem（Merchant of Record，代扣全球税费）；未配置 API key 时订单仍可创建（pending），配置后自动出结账页
+- 支付：两条互相独立的通道，各自由环境变量单独启用，任一条不可用不影响另一条与整站
+  - Creem（Merchant of Record，代扣全球税费）：信用卡、Apple Pay、Google Pay
+  - 虎皮椒（技术服务方，资金由支付宝/微信官方直接结算）：支付宝、微信支付，按 `CNY_PER_USD` 折算人民币
+  - 两条通道都只做「建单后跳转对方托管页」，本站不渲染收银台、不接触卡号或钱包凭证
+- 商品：预付 API 额度（`$1/5/10/20/50/100`，其中 `$1` 每账号限一次）与 `$1` 付费数字文档
+- 付费下载：游客填邮箱即可购买，凭「会话 / 签名 Cookie / 兑换码」三种凭证之一取件；注册或登录时自动把同邮箱的游客订单绑定到账号
+- 结算：`settleOrder` 用单条 CTE 语句完成「订单转已付 + 余额入账」，规避 neon-http 无交互事务的不原子问题；退款与争议走对称的 `reverseOrder` 回收余额或吊销下载权
 
 ## 计费模型
 
@@ -55,34 +62,42 @@ npm run dev
 |---|---|
 | `DATABASE_URL` | Neon 连接串（Marketplace 集成自动注入） |
 | `AUTH_SECRET` | JWT 签名密钥（随机 64 hex） |
-| `CREEM_WEBHOOK_SECRET` | Creem webhook HMAC 验签密钥 |
-| `CREEM_API_KEY` | Creem API key（未设置时结账降级为 pending 订单） |
+| `CREEM_WEBHOOK_SECRET` | Creem webhook HMAC 验签密钥；不设则所有回调被拒 |
+| `CREEM_API_KEY` | Creem API key（未设置时该通道隐藏，结账降级为 pending 订单） |
 | `CREEM_TEST_MODE` | 默认 test；设为 `false` 走 live `api.creem.io` |
+| `XUNHU_APPID` / `XUNHU_APPSECRET` | 虎皮椒主应用（通常是微信侧）；不设则该通道隐藏 |
+| `XUNHU_ALIPAY_APPID` / `XUNHU_ALIPAY_APPSECRET` | 支付宝侧独立应用；不设则支付宝回落到主应用 |
+| `CNY_PER_USD` | 国内通道折算汇率，默认 `7.3` |
+| `DOWNLOAD_TOKEN_SECRET` | 下载访问 Cookie 与交付页回跳签名；不设回落到 `AUTH_SECRET` |
 | `AI_GATEWAY_API_KEY` | 可选；不设则用 Vercel OIDC token |
 | `APP_URL` | `https://tokshop.xyz` |
+
+开户与 KYC 是唯一无法自动化的环节，所需资料、风险与税务口径见 [`PAYMENTS_SETUP.md`](PAYMENTS_SETUP.md)。
 
 ## 测试
 
 ```bash
-# 售卖链路（29 项）
+# 售卖与支付链路
 BASE_URL=https://tokshop.xyz CREEM_WEBHOOK_SECRET=... node tests/e2e.mjs
-# SEO/GEO（34 项：基础设施、JSON-LD、hreflang、内容引擎、翻译、审计 SEO=100 + GEO=100）
+# SEO/GEO（基础设施、JSON-LD、hreflang、内容引擎、翻译、法务页与下载页、审计 SEO=100 + GEO=100）
 BASE_URL=https://tokshop.xyz CRON_SECRET=... INDEXNOW_KEY=... node tests/seo-e2e.mjs
 # 外部 Lighthouse SEO 评分（要求全部 100）
 BASE_URL=https://tokshop.xyz node scripts/lighthouse.mjs
 ```
 
-售卖 29 项断言覆盖：注册/登录/会话、Key 生命周期、价目接口、真实上游调用（非流式+流式）的精确计费复算、余额不足 402、无效 Key 401、webhook 验签/到账/幂等（事件级+订单级双层）、用量账单一致性、生产域名可用性。详见 `TEST_REPORT.md`。
+售卖链路断言覆盖：注册/登录/会话、Key 生命周期、价目接口、真实上游调用（非流式+流式）的精确计费复算、余额不足 402、无效 Key 401、webhook 验签/到账/幂等（事件级+订单级双层）、用量账单一致性、生产域名可用性，以及支付部分的 `$1` 每账号限一次、游客下载订单无 userId、注册后自动关联、未授权下载 401、兑换码鉴权与 Cookie 免密复下、虎皮椒错误签名一律非 success、退款回收余额。详见 `TEST_REPORT.md`。
 
 以上三套在 GitHub Actions 每日自动运行（`seo-geo-audit.yml` 审计评分、`engine-scheduler.yml` 引擎调度）。
 
-## 切换 Creem 正式收款（唯一人工步骤）
+## 开通正式收款（唯一人工步骤）
 
-1. 注册 https://creem.io 并完成商户审核（法律要求实名主体，无法自动化）
-2. Dashboard → Developers 获取 live API key 与 webhook secret
-3. Webhook URL 配置为 `https://tokshop.xyz/api/webhooks/creem`
-4. 更新 Vercel 环境变量：`CREEM_API_KEY`（live key）、`CREEM_WEBHOOK_SECRET`（Creem 提供的值）、`CREEM_TEST_MODE=false`
-5. `vercel deploy --prod` 重新部署即可，代码无需改动
+代码侧已完成，只差实名开户。完整资料清单、风险与税务口径见 [`PAYMENTS_SETUP.md`](PAYMENTS_SETUP.md)，摘要：
+
+1. Creem（https://creem.io ）：以个人身份完成 Sumsub KYC，绑定本人实名支付宝作为提现账户，Webhook 填 `https://tokshop.xyz/api/webhooks/creem`，取 live `CREEM_API_KEY` 与 `CREEM_WEBHOOK_SECRET`，并设 `CREEM_TEST_MODE=false`
+2. 虎皮椒（https://www.xunhupay.com ，备选易收米）：提交身份证、手机号、本人银行卡与网站地址，回调填 `https://tokshop.xyz/api/webhooks/xunhupay`，取 `XUNHU_APPID` / `XUNHU_APPSECRET`（如支付宝为独立应用则另取一套）
+3. 写入 Vercel 环境变量后 `vercel deploy --prod`，代码无需改动
+
+法务页面（Creem KYC 与虎皮椒微信侧审核的硬性检查项）已上线：`/terms`、`/refund`、`/privacy`，中英双语。
 
 ## 切换自有推理端点（脱离 AI Gateway）
 

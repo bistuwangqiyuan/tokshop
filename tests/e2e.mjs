@@ -416,6 +416,293 @@ async function main() {
     check("T2 revoked key rejected 401", res.status === 401, `status=${res.status}`);
   }
 
+  // ---------------------------------------------------------------------------
+  // Payments: starter pack cap, guest downloads, entitlements, reversals.
+  // Deliberately after T9 so the exact-balance assertions above are untouched.
+  // ---------------------------------------------------------------------------
+
+  const signEvent = (event) => {
+    const raw = JSON.stringify(event);
+    return {
+      raw,
+      sig: createHmac("sha256", WEBHOOK_SECRET).update(raw).digest("hex"),
+    };
+  };
+  const settleViaCreem = async (orderId) => {
+    const { raw, sig } = signEvent({
+      id: `evt_e2e_${randomUUID().slice(0, 12)}`,
+      eventType: "checkout.completed",
+      object: {
+        id: `ch_e2e_${randomUUID().slice(0, 12)}`,
+        request_id: orderId,
+        metadata: { orderId },
+      },
+    });
+    return fetch(`${BASE}/api/webhooks/creem`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "creem-signature": sig },
+      body: raw,
+    });
+  };
+
+  // T11: the $1 starter pack is one per account
+  {
+    const first = await api(jar, "/api/checkout", {
+      method: "POST",
+      body: JSON.stringify({ sku: "credits_1" }),
+    });
+    const firstData = await first.json().catch(() => ({}));
+    check(
+      "T11 starter pack order created",
+      first.status === 200 && Boolean(firstData.orderId),
+      `status=${first.status} ${JSON.stringify(firstData)}`
+    );
+
+    if (firstData.orderId && WEBHOOK_SECRET) {
+      const before = Number((await (await api(jar, "/api/auth/me")).json()).user.balance);
+      const hook = await settleViaCreem(firstData.orderId);
+      check("T11 starter pack settles", hook.status === 200, `status=${hook.status}`);
+      const after = Number((await (await api(jar, "/api/auth/me")).json()).user.balance);
+      check(
+        "T11 starter pack credits exactly $1",
+        Math.abs(after - before - 1) < 1e-9,
+        `before=${before} after=${after}`
+      );
+
+      const second = await api(jar, "/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({ sku: "credits_1" }),
+      });
+      const secondData = await second.json().catch(() => ({}));
+      check(
+        "T11 second starter pack refused 409",
+        second.status === 409 && secondData.error === "starter_pack_used",
+        `status=${second.status} ${JSON.stringify(secondData)}`
+      );
+
+      const other = await api(jar, "/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({ sku: "credits_5" }),
+      });
+      check(
+        "T11 other packs still available after starter used",
+        other.status === 200,
+        `status=${other.status}`
+      );
+    }
+
+    const badSku = await api(jar, "/api/checkout", {
+      method: "POST",
+      body: JSON.stringify({ sku: "credits_999" }),
+    });
+    check("T11 unknown sku rejected 400", badSku.status === 400, `status=${badSku.status}`);
+  }
+
+  // T12: guest download checkout needs no account
+  const guestEmail = `e2e-guest-${randomUUID().slice(0, 8)}@tokshop-test.xyz`;
+  let guestOrderId = null;
+  {
+    const res = await fetch(`${BASE}/api/checkout/download`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sku: "handbook_v1", email: guestEmail }),
+    });
+    const data = await res.json().catch(() => ({}));
+    guestOrderId = data.orderId ?? null;
+    check(
+      "T12 guest download order created without a session",
+      res.status === 200 && Boolean(guestOrderId),
+      `status=${res.status} ${JSON.stringify(data)}`
+    );
+
+    const noEmail = await fetch(`${BASE}/api/checkout/download`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sku: "handbook_v1", email: "not-an-email" }),
+    });
+    check("T12 invalid email rejected 400", noEmail.status === 400, `status=${noEmail.status}`);
+
+    const badProduct = await fetch(`${BASE}/api/checkout/download`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sku: "no_such_doc", email: guestEmail }),
+    });
+    check("T12 unknown product rejected 400", badProduct.status === 400, `status=${badProduct.status}`);
+  }
+
+  // T13: an unpaid or absent purchase cannot read the document
+  {
+    const anon = await fetch(`${BASE}/api/downloads/handbook_v1`);
+    check("T13 download without entitlement 401", anon.status === 401, `status=${anon.status}`);
+
+    const badCode = await fetch(`${BASE}/api/downloads/handbook_v1?code=TSK-ZZZZ-ZZZZ-ZZZZ`);
+    check("T13 bogus redeem code 401", badCode.status === 401, `status=${badCode.status}`);
+
+    // Paid for, but by a different account: the logged-in buyer of credits only.
+    const asCreditsUser = await api(jar, "/api/downloads/handbook_v1");
+    check(
+      "T13 credits-only account cannot read a document",
+      asCreditsUser.status === 401,
+      `status=${asCreditsUser.status}`
+    );
+
+    const redeemBad = await fetch(`${BASE}/api/downloads/redeem`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "TSK-ZZZZ-ZZZZ-ZZZZ" }),
+    });
+    check("T13 unknown redeem code 404", redeemBad.status === 404, `status=${redeemBad.status}`);
+  }
+
+  // T14: settle the guest order, claim it by registering, then read the document
+  if (guestOrderId && WEBHOOK_SECRET) {
+    const hook = await settleViaCreem(guestOrderId);
+    check("T14 guest download settles", hook.status === 200, `status=${hook.status}`);
+
+    const guestJar = cookieJar();
+    const reg = await api(guestJar, "/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email: guestEmail, password: "Str0ngPass!123" }),
+    });
+    const regData = await reg.json().catch(() => ({}));
+    check(
+      "T14 registering with the buyer email claims the guest order",
+      reg.status === 201 && regData.claimedOrders >= 1,
+      `status=${reg.status} claimed=${regData.claimedOrders}`
+    );
+
+    const mine = await api(guestJar, "/api/downloads/mine");
+    const mineData = await mine.json().catch(() => ({}));
+    const owned = (mineData.downloads ?? [])[0];
+    check(
+      "T14 claimed download appears in the dashboard",
+      mine.status === 200 && owned?.sku === "handbook_v1",
+      JSON.stringify(mineData)
+    );
+    check(
+      "T14 redeem code issued on settlement",
+      typeof owned?.redeemCode === "string" && owned.redeemCode.startsWith("TSK-"),
+      `code=${owned?.redeemCode}`
+    );
+
+    const asOwner = await api(guestJar, "/api/downloads/handbook_v1");
+    const body = await asOwner.text();
+    check(
+      "T14 owner downloads the document",
+      asOwner.status === 200 &&
+        (asOwner.headers.get("content-disposition") ?? "").includes("attachment") &&
+        body.includes("# The Open-Model API Handbook"),
+      `status=${asOwner.status} bytes=${body.length}`
+    );
+    check(
+      "T14 live price appendix substituted",
+      !body.includes("{{PRICE_TABLE}}"),
+      "placeholder left in delivered file"
+    );
+
+    const zh = await api(guestJar, "/api/downloads/handbook_v1?lang=zh");
+    const zhBody = await zh.text();
+    check(
+      "T14 Chinese edition delivered",
+      zh.status === 200 && zhBody.includes("开源大模型 API 选型与成本优化实战手册"),
+      `status=${zh.status} bytes=${zhBody.length}`
+    );
+
+    if (owned?.redeemCode) {
+      const codeJar = cookieJar();
+      const redeem = await api(codeJar, "/api/downloads/redeem", {
+        method: "POST",
+        body: JSON.stringify({ code: owned.redeemCode }),
+      });
+      check("T14 redeem code unlocks access", redeem.status === 200, `status=${redeem.status}`);
+      const viaCookie = await api(codeJar, "/api/downloads/handbook_v1");
+      check(
+        "T14 access cookie grants download without a session",
+        viaCookie.status === 200,
+        `status=${viaCookie.status}`
+      );
+      const viaCodeOnly = await fetch(
+        `${BASE}/api/downloads/handbook_v1?code=${encodeURIComponent(owned.redeemCode)}`
+      );
+      check(
+        "T14 redeem code alone grants download",
+        viaCodeOnly.status === 200,
+        `status=${viaCodeOnly.status}`
+      );
+    }
+  }
+
+  // T15: XunhuPay notify rejects anything it cannot verify
+  {
+    const res = await fetch(`${BASE}/api/webhooks/xunhupay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        trade_order_id: randomUUID().replace(/-/g, ""),
+        total_fee: "7.30",
+        status: "OD",
+        hash: "0".repeat(32),
+      }),
+    });
+    const text = await res.text();
+    check(
+      "T15 xunhupay bad signature rejected 401",
+      res.status === 401 && text !== "success",
+      `status=${res.status} body=${text}`
+    );
+
+    const noOrder = await fetch(`${BASE}/api/webhooks/xunhupay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ total_fee: "7.30" }),
+    });
+    check(
+      "T15 xunhupay unsigned callback never returns success",
+      noOrder.status !== 200,
+      `status=${noOrder.status}`
+    );
+  }
+
+  // T16: a refund takes the credits back
+  if (WEBHOOK_SECRET) {
+    const order = await api(jar, "/api/checkout", {
+      method: "POST",
+      body: JSON.stringify({ sku: "credits_5" }),
+    });
+    const orderData = await order.json().catch(() => ({}));
+    if (orderData.orderId) {
+      await settleViaCreem(orderData.orderId);
+      const credited = Number((await (await api(jar, "/api/auth/me")).json()).user.balance);
+
+      const { raw, sig } = signEvent({
+        id: `evt_e2e_${randomUUID().slice(0, 12)}`,
+        eventType: "refund.created",
+        object: {
+          id: `rf_e2e_${randomUUID().slice(0, 12)}`,
+          request_id: orderData.orderId,
+          metadata: { orderId: orderData.orderId },
+        },
+      });
+      const refund = await fetch(`${BASE}/api/webhooks/creem`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "creem-signature": sig },
+        body: raw,
+      });
+      const refundData = await refund.json().catch(() => ({}));
+      check(
+        "T16 refund event reverses the order",
+        refund.status === 200 && refundData.reversed === true,
+        `status=${refund.status} ${JSON.stringify(refundData)}`
+      );
+      const afterRefund = Number((await (await api(jar, "/api/auth/me")).json()).user.balance);
+      check(
+        "T16 refunded credits removed from balance",
+        Math.abs(credited - afterRefund - 5) < 1e-9,
+        `credited=${credited} afterRefund=${afterRefund}`
+      );
+    }
+  }
+
   console.log(`\n===== ${passed} passed, ${failed} failed =====`);
   if (failures.length > 0) {
     console.log("Failures:");

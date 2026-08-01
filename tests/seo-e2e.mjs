@@ -69,6 +69,48 @@ async function main() {
   const zhBlog = await fetch(`${BASE}/zh/blog`);
   check("S27 zh blog index 200", zhBlog.status === 200);
 
+  // ---------- S8 commerce and legal pages ----------
+  // Payment onboarding reviewers check for these, and so do buyers.
+  for (const slug of ["terms", "refund", "privacy"]) {
+    const en = await fetch(`${BASE}/${slug}`);
+    const enText = await en.text();
+    const zh = await fetch(`${BASE}/zh/${slug}`);
+    const zhText = await zh.text();
+    check(`S35 /${slug} en+zh 200 with canonical and reciprocal hreflang`,
+      en.status === 200 && zh.status === 200 &&
+      enText.includes(`rel="canonical" href="${BASE}/${slug}"`) &&
+      zhText.includes(`rel="canonical" href="${BASE}/zh/${slug}"`) &&
+      /hreflang="zh-CN"/i.test(enText) && /hreflang="en"/i.test(zhText),
+      `en=${en.status} zh=${zh.status}`);
+    check(`S36 /${slug} in sitemap (both locales)`,
+      smText.includes(`${BASE}/${slug}`) && smText.includes(`${BASE}/zh/${slug}`));
+  }
+  const dl = await fetch(`${BASE}/downloads`);
+  const dlText = await dl.text();
+  const zhDl = await fetch(`${BASE}/zh/downloads`);
+  const zhDlText = await zhDl.text();
+  check("S37 downloads landing en+zh 200 with Product+Offer JSON-LD",
+    dl.status === 200 && zhDl.status === 200 &&
+    dlText.includes('"Product"') && dlText.includes('"Offer"') &&
+    zhDlText.includes('"Offer"'),
+    `en=${dl.status} zh=${zhDl.status}`);
+  check("S38 downloads canonical + reciprocal hreflang",
+    dlText.includes(`rel="canonical" href="${BASE}/downloads"`) &&
+    /hreflang="zh-CN"/i.test(dlText) && /hreflang="en"/i.test(zhDlText));
+  // The CNY button only renders once the domestic rail is configured, so only
+  // the USD price is asserted unconditionally.
+  check("S39 downloads states the USD price", dlText.includes("$1.00"));
+  check("S40 legal pages linked from every footer",
+    home.includes("/terms") && home.includes("/refund") &&
+    home.includes("/privacy") && home.includes("/downloads"));
+  check("S41 llms.txt advertises policies and downloads",
+    llmsText.includes("/refund") && llmsText.includes("/downloads"));
+  const delivery = await fetch(`${BASE}/downloads/success?order=nope&t=nope`);
+  check("S42 delivery page noindex and refuses a forged link",
+    delivery.status === 200 &&
+    /<meta name="robots" content="noindex/i.test(await delivery.text()),
+    `status=${delivery.status}`);
+
   // ---------- S3 engine endpoints ----------
   const noAuth = await fetch(`${BASE}/api/engine/trends`, { method: "POST" });
   check("S10 engine endpoints reject unauthenticated 401", noAuth.status === 401);

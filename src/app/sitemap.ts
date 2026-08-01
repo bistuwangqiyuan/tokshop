@@ -11,11 +11,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/pricing`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/docs`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/blog`, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE_URL}/downloads`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE_URL}/terms`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/refund`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/privacy`, changeFrequency: "yearly", priority: 0.3 },
     // Chinese versions
     { url: `${SITE_URL}/zh`, changeFrequency: "daily", priority: 0.9 },
     { url: `${SITE_URL}/zh/pricing`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE_URL}/zh/docs`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE_URL}/zh/blog`, changeFrequency: "hourly", priority: 0.7 },
+    {
+      url: `${SITE_URL}/zh/downloads`,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    { url: `${SITE_URL}/zh/terms`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/zh/refund`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/zh/privacy`, changeFrequency: "yearly", priority: 0.3 },
   ];
   const sql = getEngineSql();
   if (!sql) return statics;

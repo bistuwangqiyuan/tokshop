@@ -43,7 +43,14 @@ ${modelLines || "- See GET /v1/models"}
 - [Pricing](${SITE_URL}/pricing)
 - [API documentation](${SITE_URL}/docs)
 - [Blog](${SITE_URL}/blog)
-- [中文首页](${SITE_URL}/zh) · [价格](${SITE_URL}/zh/pricing) · [文档](${SITE_URL}/zh/docs) · [博客](${SITE_URL}/zh/blog)
+- [Paid downloads](${SITE_URL}/downloads): 1 USD digital handbooks, guest checkout by email
+- [中文首页](${SITE_URL}/zh) · [价格](${SITE_URL}/zh/pricing) · [文档](${SITE_URL}/zh/docs) · [博客](${SITE_URL}/zh/blog) · [资料下载](${SITE_URL}/zh/downloads)
+
+## Policies
+
+- [Terms of service](${SITE_URL}/terms)
+- [Refund policy](${SITE_URL}/refund): unused credits refundable within 14 days
+- [Privacy policy](${SITE_URL}/privacy): prompt content is never stored
 
 ## Contact
 

@@ -107,19 +107,38 @@ export const orders = pgTable(
   "orders",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    // Null for guest purchases of digital downloads. Bound to an account later
+    // by claimGuestOrders() when someone registers with the same email.
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    // Buyer email. Nullable only because rows predating guest checkout have
+    // none; every new order writes it.
+    email: text("email"),
+    provider: text("provider", { enum: ["creem", "xunhupay"] })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull().default("creem"),
+      .default("creem"),
     providerOrderId: text("provider_order_id"),
     checkoutId: text("checkout_id"),
-    // USD paid by the customer
+    kind: text("kind", { enum: ["credits", "download"] })
+      .notNull()
+      .default("credits"),
+    // Product identifier from src/lib/products.ts, e.g. "credits_5"
+    sku: text("sku"),
+    // USD paid by the customer - the single basis for accounting
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-    // USD credited to balance
+    // USD credited to balance (zero for downloads)
     credits: numeric("credits", { precision: 12, scale: 2 }).notNull(),
-    status: text("status", { enum: ["pending", "paid", "failed"] })
+    // What was actually charged, which differs from `amount` on the domestic
+    // rail where Alipay and WeChat Pay are CNY-native.
+    payCurrency: text("pay_currency").notNull().default("USD"),
+    payAmount: numeric("pay_amount", { precision: 12, scale: 2 }),
+    status: text("status", {
+      enum: ["pending", "paid", "failed", "refunded"],
+    })
       .notNull()
       .default("pending"),
+    // Bearer credential letting a guest re-access a purchased download.
+    redeemCode: text("redeem_code"),
+    downloadCount: integer("download_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -127,7 +146,9 @@ export const orders = pgTable(
   },
   (t) => [
     index("orders_user_idx").on(t.userId),
+    index("orders_email_idx").on(t.email),
     uniqueIndex("orders_checkout_idx").on(t.checkoutId),
+    uniqueIndex("orders_redeem_idx").on(t.redeemCode),
   ]
 );
 

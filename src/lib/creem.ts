@@ -28,43 +28,56 @@ async function creemFetch(path: string, init?: RequestInit) {
   return res.json();
 }
 
-const productCache = new Map<number, string>();
+export type CreemProductSpec = {
+  /** Stable identifier used to find the product again on later checkouts. */
+  name: string;
+  description: string;
+  usd: number;
+  /**
+   * Drives which tax rate Creem applies as merchant of record. Prepaid API
+   * credits are software; a document sold as a file is an ebook, which is taxed
+   * differently in most of the EU.
+   */
+  taxCategory: "saas" | "ebook";
+};
+
+const productCache = new Map<string, string>();
 
 /**
- * Find or create a one-time "credits pack" product for the given USD amount.
- * Products are cached per serverless instance; duplicates across instances are
- * harmless (checkout still resolves to a valid product).
+ * Find or create a one-time Creem product. Products are cached per serverless
+ * instance; duplicates across instances are harmless because checkout only
+ * needs any valid product id for the right price.
  */
-export async function getOrCreateProduct(amountUsd: number): Promise<string> {
-  const cached = productCache.get(amountUsd);
+export async function getOrCreateProduct(
+  spec: CreemProductSpec
+): Promise<string> {
+  const cached = productCache.get(spec.name);
   if (cached) return cached;
-
-  const name = `TokShop Credits $${amountUsd}`;
 
   const search = await creemFetch(`/products/search?page_size=100`).catch(
     () => null
   );
   const items: Array<{ id: string; name: string }> =
     search?.items ?? search?.data ?? [];
-  const found = items.find((p) => p.name === name);
+  const found = items.find((p) => p.name === spec.name);
   if (found) {
-    productCache.set(amountUsd, found.id);
+    productCache.set(spec.name, found.id);
     return found.id;
   }
 
   const product = await creemFetch(`/products`, {
     method: "POST",
     body: JSON.stringify({
-      name,
-      description: `${amountUsd} USD of prepaid API credits on tokshop.xyz. Credits are applied to your account balance immediately after payment.`,
-      price: Math.round(amountUsd * 100),
+      name: spec.name,
+      description: spec.description,
+      price: Math.round(spec.usd * 100),
       currency: "USD",
       billing_type: "onetime",
       tax_mode: "inclusive",
-      tax_category: "saas",
+      tax_category: spec.taxCategory,
     }),
   });
-  productCache.set(amountUsd, product.id);
+  productCache.set(spec.name, product.id);
   return product.id;
 }
 

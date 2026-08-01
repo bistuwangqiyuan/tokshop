@@ -88,6 +88,21 @@ function jsonLdBlocks(html: string): { types: string[]; parseErrors: number } {
   return { types, parseErrors };
 }
 
+/**
+ * Length limits apply to what a searcher sees, not to the escaped markup. An
+ * ampersand in a title arrives as `&amp;`, so measuring the raw HTML counted
+ * four characters that do not exist and failed a 67-character title as 71.
+ */
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;|&#x27;/gi, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&");
+}
+
 async function auditPage(
   path: string,
   kind: "page" | "article"
@@ -105,14 +120,17 @@ async function auditPage(
     }
     const html = r.text;
 
-    const title = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "";
+    const title = decodeEntities(
+      html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? ""
+    );
     if (!title) issues.push("missing <title>");
     else if (title.length > 70) issues.push(`title too long (${title.length})`);
 
-    const desc =
+    const desc = decodeEntities(
       html.match(/<meta[^>]+name="description"[^>]+content="([^"]*)"/i)?.[1] ??
-      html.match(/<meta[^>]+content="([^"]*)"[^>]+name="description"/i)?.[1] ??
-      "";
+        html.match(/<meta[^>]+content="([^"]*)"[^>]+name="description"/i)?.[1] ??
+        ""
+    );
     if (!desc) issues.push("missing meta description");
     else if (desc.length < 40) issues.push(`description too short (${desc.length})`);
 

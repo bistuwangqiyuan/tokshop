@@ -132,16 +132,23 @@ async function main() {
   const ctBody = await ct.json();
   check("S12 content engine publishes QC-passed article",
     ct.status === 200 && ctBody.ok === true && ctBody.qc?.pass === true,
-    `slug=${ctBody.slug} words=${ctBody.qc?.wordCount} src=${ctBody.source}`);
+    `slug=${ctBody.slug} words=${ctBody.qc?.wordCount} src=${ctBody.source}` +
+    (ctBody.ok ? "" : ` reason=${ctBody.reason ?? "(none reported)"}`));
   check("S13 IndexNow push accepted (200/202)",
     ctBody.indexnow?.ok === true, `status=${ctBody.indexnow?.status}`);
   check("S14 WebSub ping accepted", ctBody.websub?.ok === true);
 
   // ---------- S4 article page quality ----------
-  const artUrl = `${BASE}/blog/${ctBody.slug}`;
-  const artResp = await fetch(artUrl);
+  // The engine legitimately publishes nothing when every candidate topic is
+  // already covered. Audit the newest live article in that case, so page
+  // quality is still measured; S12 above is what holds the engine to account.
+  const sm1 = await (await fetch(`${BASE}/sitemap.xml`)).text();
+  const newestSlug = sm1.match(/<loc>[^<]*\/blog\/([a-z0-9-]+)<\/loc>/)?.[1];
+  const slug = ctBody.slug ?? newestSlug;
+  const artResp = await fetch(`${BASE}/blog/${slug}`);
   const art = await artResp.text();
-  check("S15 new article page 200", artResp.status === 200);
+  check("S15 new article page 200", artResp.status === 200,
+    `slug=${slug}${ctBody.slug ? "" : " (newest live article)"}`);
   check("S16 Article JSON-LD + canonical on article page",
     art.includes('"Article"') && art.includes('rel="canonical"'));
   check("S17 article has internal links",
@@ -150,11 +157,11 @@ async function main() {
   check("S18 article title within 70 chars", titleTag.length > 0 &&
     titleTag.length <= 70, `len=${titleTag.length}`);
 
-  // new article appears in sitemap and RSS (re-fetch)
+  // article appears in sitemap and RSS (re-fetch)
   const sm2 = await (await fetch(`${BASE}/sitemap.xml`)).text();
   const rss2 = await (await fetch(`${BASE}/rss.xml`)).text();
   check("S19 new article in sitemap + RSS",
-    sm2.includes(ctBody.slug) && rss2.includes(ctBody.slug));
+    Boolean(slug) && sm2.includes(slug) && rss2.includes(slug));
 
   // ---------- S7 answer-first article structure + Chinese twin ----------
   check("S28 article answer-first structure (TL;DR + FAQ + question H2)",
@@ -162,19 +169,24 @@ async function main() {
     /"BreadcrumbList"/.test(art) && /"dateModified"/.test(art));
   check("S29 article og:image + dateModified in JSON-LD",
     /property="og:image"/.test(art));
+  // JSON.stringify(undefined) is undefined, not a string: slicing it used to
+  // crash the whole suite and skip every assertion after this one.
   check("S30 content engine produced Chinese translation",
-    ctBody.zh?.ok === true, JSON.stringify(ctBody.zh).slice(0, 120));
-  if (ctBody.zh?.ok) {
-    const zhArtResp = await fetch(`${BASE}/zh/blog/${ctBody.slug}`);
+    ctBody.zh?.ok === true, String(JSON.stringify(ctBody.zh ?? null)).slice(0, 120));
+  // The Chinese twin is checked for whichever article was audited above, so a
+  // run that published nothing still verifies the bilingual pair is intact.
+  const zhSlug = ctBody.zh?.ok ? ctBody.slug : newestSlug;
+  if (zhSlug) {
+    const zhArtResp = await fetch(`${BASE}/zh/blog/${zhSlug}`);
     const zhArt = await zhArtResp.text();
     check("S31 zh article 200 + Article JSON-LD (zh-CN) + hreflang pair",
       zhArtResp.status === 200 && zhArt.includes('"zh-CN"') &&
       /hreflang="en"/i.test(zhArt) && zhArt.includes('"Article"'));
-    check("S32 zh article in sitemap", sm2.includes(`/zh/blog/${ctBody.slug}`));
+    check("S32 zh article in sitemap", sm2.includes(`/zh/blog/${zhSlug}`));
   } else {
     check("S31 zh article 200 + Article JSON-LD (zh-CN) + hreflang pair", false,
-      "translation failed");
-    check("S32 zh article in sitemap", false, "translation failed");
+      "no article available to check");
+    check("S32 zh article in sitemap", false, "no article available to check");
   }
 
   // ---------- S5 self-audit engine ----------

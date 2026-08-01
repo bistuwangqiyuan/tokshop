@@ -103,6 +103,26 @@ function jsonLdBlocks(html: string): { types: string[]; parseErrors: number } {
  * ampersand in a title arrives as `&amp;`, so measuring the raw HTML counted
  * four characters that do not exist and failed a 67-character title as 71.
  */
+/**
+ * Search engines truncate titles and snippets by pixel width, not by character
+ * count, and a CJK glyph is about twice as wide as a Latin one. The 70 and 40
+ * thresholds below were picked for Latin text, so measure in the same unit:
+ * a 37-character Chinese description says as much as a 125-character English
+ * one and must not be reported as too short.
+ */
+function displayWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) {
+    w +=
+      /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(
+        ch
+      )
+        ? 2
+        : 1;
+  }
+  return w;
+}
+
 function decodeEntities(s: string): string {
   return s
     .replace(/&lt;/g, "<")
@@ -134,7 +154,8 @@ async function auditPage(
       html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? ""
     );
     if (!title) issues.push("missing <title>");
-    else if (title.length > 70) issues.push(`title too long (${title.length})`);
+    else if (displayWidth(title) > 70)
+      issues.push(`title too long (${displayWidth(title)})`);
 
     const desc = decodeEntities(
       html.match(/<meta[^>]+name="description"[^>]+content="([^"]*)"/i)?.[1] ??
@@ -142,7 +163,8 @@ async function auditPage(
         ""
     );
     if (!desc) issues.push("missing meta description");
-    else if (desc.length < 40) issues.push(`description too short (${desc.length})`);
+    else if (displayWidth(desc) < 40)
+      issues.push(`description too short (${displayWidth(desc)})`);
 
     const canonical =
       html.match(/<link[^>]+rel="canonical"[^>]+href="([^"]*)"/i)?.[1] ??

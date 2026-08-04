@@ -55,3 +55,7 @@ content-debug.json
 
 # agent scratch plans
 /.cursor/plans/
+
+# python bytecode (reports/ ships .py sources, not build artefacts)
+__pycache__/
+*.py[cod]

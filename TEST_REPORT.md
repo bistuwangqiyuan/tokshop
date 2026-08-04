@@ -176,6 +176,32 @@ assert round(upstream * 1.5, 8) == 0.00000546    # 零售价 = 成本 x 1.5，�
 - **虎皮椒**：尚未开户。无沙箱，正向支付需开户后用真实 ¥7.3 自购验证（见 `PAYMENTS_SETUP.md`）。
 - 上述 T11/T14/T16 的结算链路是用与生产一致的密钥签名、走真实 webhook 路由与真实 `settleOrder` 执行的，无测试旁路。
 
+## Creem 过审加固验收(2026-08-04 追加)
+
+- 背景：Creem 账号已注册、KYC 与店铺审核进行中。本轮不改支付逻辑，只对着 [Creem 官方审核检查表](https://docs.creem.io/merchant-of-record/account-reviews/account-reviews)与其列出的 6 条常见拒绝原因，把站点侧能做的全部补齐。
+- 测试方式：`tests/e2e.mjs` **56 项**、`tests/seo-e2e.mjs` 扩到 **57 项**（新增 7 项合规断言），全部对生产发起真实 HTTP 请求。
+
+| # | Creem 检查项 | 本轮动作 | 断言 | 结果 |
+|---|---|---|---|---|
+| 1 | 商户身份可核实 | 经营者姓名、身份与完整地址收进 `src/lib/site.ts` 单一常量，出现在每页页脚、每个法务页顶部的身份区块、独立联系页，以及 Organization JSON-LD 的 `legalName` 与 `PostalAddress` | S43 / S44 / S45 | 通过 |
+| 2 | 客服邮箱在网站可见且与后台一致 | 新增 `/contact` 与 `/zh/contact` 独立可索引联系页（邮箱保持 `mingxinai@agentmail.to` 不变，需你在后台核对一致） | S35 / S36（contact 中英） | 通过 |
+| 3 | 可接受使用政策 | 新增中英双语 `/aup`：禁止内容清单、禁止行为、高风险用途、处置方式与举报入口 | S46 / S47 | 通过 |
+| 4 | AI 产品透明性 | AUP 首节声明独立转售、与 DeepSeek/阿里云/智谱/月之暗面/OpenAI 均无附属关系、「OpenAI 兼容」仅指请求格式；并说明**目录仅文本模型**，故不适用 Moderation API（该要求只针对图像/视频生成）。定价页与文档页页脚同步声明 | S46 | 通过 |
+| 5 | 无虚假信息 | 删除手册简介中未经证实的「profitable / 真实赚钱」（本站至今零收入）、把「lifetime / 终身」改为与条款一致的表述 | 人工核对 | 通过 |
+| 6 | 不绕开支付通道 | 删除「我们手工为你完成订单」——通道未开通时改为「开通后通知你」。MoR 审核会把线下成单视为绕开清算 | S48 | 通过 |
+| 7 | 审核员点得到真实结账 | 定价页充值卡片全部指向登录墙，新增一行直达 `/downloads` 的游客结账入口（填邮箱即可买 $1 手册） | 人工核对 | 通过 |
+| 8 | 全站 SEO/GEO 不回退 | 4 个新页面同步进 sitemap、llms.txt、seo-audit、Lighthouse 门禁 | S33 / S34；全量 **144 页** 审计 0 问题、SEO=100、GEO=100 | 通过 |
+| 9 | 外部 Lighthouse 覆盖新页 | Lighthouse URL 清单加入 `/aup` 与 `/contact` | GitHub Actions run [30930547497](https://github.com/bistuwangqiyuan/tokshop/actions/runs/30930547497)：**13/13 SEO=100**（LH 13.4.1），seo-e2e **57/57**，整体 conclusion=success | 通过 |
+
+一键激活脚本 `scripts/creem-activate.mjs`（`npm run creem:activate`）：拿到 Key 后一条命令完成——按 `creem_test_` 前缀自动判定 test/live 并选对 base URL、直连 Creem 验证 Key、区分「Key 无效」与「Key 未写入 Vercel」、驱动线上真实结账接口把 6 个充值档位（saas）与文档商品（ebook）在 Creem 侧建好、交叉核对环境与 `CREEM_TEST_MODE` 是否一致、验证 Webhook 伪造签名被拒与真实签名结算幂等，并打印一条可人工付款的收银台链接。真实签名的结算模拟**只在测试模式执行**，live 模式下伪造已支付订单会污染真实账目，脚本自动跳过。
+
+本轮发现并修复的真实缺陷：
+
+1. **一篇文章渲染出两个 H1**：`/blog/grok-video-ai-developers` 的正文 Markdown 自带一个顶级 `# 标题`，`marked` 渲染成第二个 `<h1>`，与页面标题重复，审计扣分至 96.5（中英两页各一处）。修复：新增 `src/lib/markdown.ts` 的 `renderArticleHtml()`，走 lexer 把正文顶级标题降为 H2 —— 用 lexer 而非正则，代码块里的 `#` 不会被误伤；只作用于文章页，不影响正当拥有自己 H1 的付费文档阅读页。一次修复覆盖全部存量与未来文章，无需回填数据。
+2. **内容引擎偶发拒稿被误判为流水线故障**：某轮 QC 以「no links at all」弃稿（质检正常工作），却导致 S12/S13/S14/S30 四项连锁 FAIL。修复两处：生成重试由 2 次提高到 3 次（实测立即重试即成功，maxDuration 300s 容得下）；测试语义改为「引擎要么发出通过质检的文章、要么明确给出原因」，IndexNow/WebSub/翻译三项在本轮无发文时不再误报，另加 S12b 断言最新文章发布于 48 小时内 —— 这样「引擎正当拒稿」与「引擎真的卡住」不再混为一谈。
+3. **可选的 PSI 步骤把整个 CI 拖红**：keyless PageSpeed Insights 每日配额极小，7 个 URL 全部 429 后脚本退出 1；虽然该步骤标了 `continue-on-error`，job 汇总仍显示失败，掩盖了权威门禁 Lighthouse 的 13/13 全绿。修复：`scripts/psi.mjs` 在「无 API Key 且全部 URL 均因 429 失败」时判定为跳过而非失败，其余任何失败仍照常退出 1。
+4. **本机测试缺环境变量导致的假失败**：S06 IndexNow 校验依赖本地 `INDEXNOW_KEY`，未设置时请求 `/undefined.txt`。实测线上 key 文件返回 200 且内容匹配，非站点缺陷。
+
 ## 边界与如实声明
 
 1. **支付**：Creem 已注册、审核中；虎皮椒尚未开户（法律要求实名主体，AI 无法代办）。两条通道的建单、验签、幂等、结算、退款回收链路已按各自官方规范实现并全量测试（Creem HMAC-SHA256；虎皮椒 MD5 验签 + 回调后二次回查金额）；接入真实收款只需按 `PAYMENTS_SETUP.md` 配置环境变量并重新部署，代码无需改动。

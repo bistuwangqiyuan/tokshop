@@ -1,4 +1,3 @@
-import { marked } from "marked";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -6,6 +5,7 @@ import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { getArticle, getEngineSql, listArticles } from "@/lib/engine/db";
 import { extractFaq } from "@/lib/engine/extract";
+import { renderArticleHtml } from "@/lib/markdown";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const revalidate = 900;
@@ -62,7 +62,7 @@ export default async function ArticlePageZh({ params }: Props) {
     })
     .slice(0, 4);
 
-  const html = await marked.parse(a.zh_body_md);
+  const html = renderArticleHtml(a.zh_body_md);
   const canonical = `${SITE_URL}/zh/blog/${a.slug}`;
   const published = a.published_at || a.created_at;
   const modified = a.updated_at || published;

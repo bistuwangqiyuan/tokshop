@@ -51,11 +51,16 @@ ${modelLines || "- See GET /v1/models"}
 - [Terms of service](${SITE_URL}/terms)
 - [Refund policy](${SITE_URL}/refund): unused credits refundable within 14 days
 - [Privacy policy](${SITE_URL}/privacy): prompt content is never stored
+- [Acceptable use policy](${SITE_URL}/aup): text models only, no image or video generation
+- [中文](${SITE_URL}/zh/terms) · [退款](${SITE_URL}/zh/refund) · [隐私](${SITE_URL}/zh/privacy) · [使用政策](${SITE_URL}/zh/aup)
 
 ## Contact
 
+- [Contact page](${SITE_URL}/contact) · [中文](${SITE_URL}/zh/contact)
 - Support email: mingxinai@agentmail.to
 - Support email (China): 13426086861@139.com
+- Operated by Wang Qiyuan, No. 12 Xiaoying East Road, Qinghe, Haidian District, Beijing 100192, China
+- Independent reseller: not affiliated with or endorsed by any model developer
 
 ## Latest articles
 

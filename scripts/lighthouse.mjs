@@ -25,6 +25,8 @@ const PATHS = [
   "/terms",
   "/refund",
   "/privacy",
+  "/aup",
+  "/contact",
 ];
 
 async function main() {

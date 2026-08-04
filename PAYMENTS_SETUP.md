@@ -2,21 +2,28 @@
 
 这份清单只列**需要人去做、代码做不了**的事（KYC、开户、填环境变量）。代码侧的两条支付通道已经写好，任一通道的环境变量填齐即自动启用，未填则该通道自动隐藏，不影响站点其余部分。
 
-经营主体：王启源（中国个人经营）。收款币种以美元为记账本位币，国内通道按 `CNY_PER_USD` 折算人民币。
+经营主体：王启源，中国北京市海淀区清河小营东路 12 号（邮编 100192），个人经营。收款币种以美元为记账本位币，国内通道按 `CNY_PER_USD` 折算人民币。
 
 ---
 
 ## 一、前置条件（已完成）
 
-支付方的合规审核会检查网站是否具备下列页面，现已全部上线，中英双语：
+Creem 官方审核检查表逐条对照，站点侧已全部满足，全部中英双语：
 
-- 服务条款 https://tokshop.xyz/terms · https://tokshop.xyz/zh/terms
-- 退款政策 https://tokshop.xyz/refund · https://tokshop.xyz/zh/refund
-- 隐私政策 https://tokshop.xyz/privacy · https://tokshop.xyz/zh/privacy
-- 联系方式：每一页的页脚都有 mingxinai@agentmail.to 与 13426086861@139.com
-- 商品页：https://tokshop.xyz/pricing（API 额度）与 https://tokshop.xyz/downloads（付费文档）
+| 检查项 | 现状 |
+| --- | --- |
+| 隐私政策与服务条款 | https://tokshop.xyz/terms · /refund · /privacy（及 `/zh/` 版本） |
+| 可接受使用政策（AUP） | https://tokshop.xyz/aup · https://tokshop.xyz/zh/aup |
+| 客服邮箱在网站可见 | 每页页脚 + 独立联系页 https://tokshop.xyz/contact |
+| 商户身份与地址 | 每页页脚、每个法务页顶部、Organization JSON-LD 均含姓名与完整地址 |
+| 定价公开可见 | https://tokshop.xyz/pricing（实时价目）与 /downloads（$1.00 明码） |
+| 商品已上线可购买 | /downloads 支持**游客填邮箱直接结账**，审核员无需注册即可走到真实收银台 |
+| 无虚假信息 | 站内无评价、无用户数、无星级、无 SLA 承诺 |
+| AI 合规 | AUP 首节声明独立转售、与各模型开发方无附属关系；目录仅文本模型，**无图像/视频生成，故不需要接 Moderation API** |
 
 审核时如被问到「你卖什么」，标准答复：面向开发者的 OpenAI 兼容 API 额度（SaaS）与自有数字文档（ebook），均为即时交付的虚拟商品。
+
+> **最常见的拒绝原因是邮箱不一致。** 请确认 Creem 后台 Settings → Business Details 的支持邮箱**就是** `mingxinai@agentmail.to`，与网站页脚完全一致。
 
 ---
 
@@ -125,14 +132,24 @@ Test Mode 与 live 完全隔离：独立 API Key、独立商品、独立 Webhook
 
 ---
 
-## 四、把值交给我之后
+## 四、把值交给我之后：一条命令自动接通
 
-我会做这些（无需你操作）：
+拿到 Key 后，写入 Vercel 环境变量并重新部署，然后跑：
 
-1. 写入 Vercel 环境变量（Production），触发重新部署
-2. 先用 `CREEM_TEST_MODE=true` 跑一遍全流程回归：登录充值、游客买下载、交付页、兑换码找回、退款回收余额
-3. 切到 live 后，用真实小额自购各跑一单（Creem 一单 $1，虎皮椒支付宝与微信各一单 ¥7.3），确认回调验签、金额核对、幂等与到账
-4. 把测试证据写进 `TEST_REPORT.md`
+```bash
+CREEM_API_KEY=creem_test_xxx CREEM_WEBHOOK_SECRET=xxx npm run creem:activate
+```
+
+`scripts/creem-activate.mjs` 会自动完成：
+
+1. 用 Key 直连 Creem API 验证有效性，并**按 `creem_test_` 前缀自动判定** test / live，选对 base URL
+2. 读取线上价目，确认部署侧已点亮 Creem 通道（能区分「Key 无效」与「Key 还没写进 Vercel」两种失败）
+3. 驱动线上真实结账接口，把**全部 6 个充值档位（saas 税类）与文档商品（ebook 税类）**在 Creem 侧建好，避免第一个真实客户成为第一个建商品的人
+4. 交叉核对环境：本地 Key 是 test 但线上返回 live 收银台链接时会直接报错（这种不一致会让所有真实支付静默失败）
+5. 验证 Webhook：伪造签名必须被 401 拒绝；**测试模式**下再发一条真实签名事件，断言订单结算且重放幂等
+6. 打印一条 $1 文档的收银台链接，供你人工付款验收
+
+安全边界：真实签名的结算模拟**只在测试模式执行**。live 模式下伪造一笔已支付订单会污染真实账目，脚本会自动跳过，改由你真实自购 $1 验证。
 
 ## 五、只有一条通道能开怎么办
 

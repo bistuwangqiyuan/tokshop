@@ -9,7 +9,7 @@
 
 import { CONTACT_EMAIL, CONTACT_EMAIL_CN, type Locale } from "@/lib/i18n";
 
-export type LegalSlug = "terms" | "refund" | "privacy";
+export type LegalSlug = "terms" | "refund" | "privacy" | "aup";
 
 export type LegalDoc = {
   title: string;
@@ -22,8 +22,9 @@ export type LegalDoc = {
 /** Last substantive review of these documents. */
 export const LEGAL_UPDATED = "2026-08-01";
 
-const OPERATOR_EN = "Wang Qiyuan (王启源), an individual operator based in China";
-const OPERATOR_ZH = "王启源（个人经营者，中国）";
+const OPERATOR_EN =
+  "Wang Qiyuan (王启源), an individual operator based in Beijing, China";
+const OPERATOR_ZH = "王启源（个人经营者，中国北京）";
 
 export const legal: Record<Locale, Record<LegalSlug, LegalDoc>> = {
   en: {
@@ -279,6 +280,70 @@ export const legal: Record<Locale, Record<LegalSlug, LegalDoc>> = {
         },
       ],
     },
+    aup: {
+      title: "Acceptable Use Policy",
+      metaDescription:
+        "TokShop acceptable use policy: what the relayed model API may and may not be used for, prohibited content and conduct, and how violations are enforced.",
+      updated: LEGAL_UPDATED,
+      intro:
+        "This policy sets the limits on what you may do with a TokShop API key and " +
+        "with the documents we sell. It applies to everyone who uses the service, " +
+        "and it applies to the people you share your key with.",
+      sections: [
+        {
+          h: "1. What this service actually is",
+          body: [
+            "TokShop is an independent reseller. We operate an OpenAI-compatible HTTP endpoint that forwards your request to a third-party open-source language model and returns the answer, and we bill you per token for doing so.",
+            "We are not affiliated with, endorsed by or sponsored by DeepSeek, Alibaba Cloud (Qwen), Zhipu AI (GLM), Moonshot AI (Kimi), OpenAI, or any other model developer. Model names appear on this site only to identify which third-party model a request is routed to. The phrase OpenAI-compatible describes the shape of the HTTP request, not any relationship with OpenAI.",
+            "The catalog contains text models only. We expose no image, video or voice generation endpoint, and no such model can be selected through our API.",
+          ],
+        },
+        {
+          h: "2. Content you must not generate",
+          body: [
+            "Any sexual content involving minors, and any attempt to elicit it. This is the one violation with no warning and no appeal: the key is revoked immediately, the account is closed, and we cooperate with the relevant authorities.",
+            "Sexually explicit material, and content whose purpose is sexual gratification.",
+            "Content that incites or plans violence, terrorism, or self-harm, or that provides operational instructions for weapons capable of mass harm.",
+            "Harassment, threats, or hate speech targeting people on the basis of a protected characteristic.",
+            "Malware, ransomware, exploit code, phishing pages, or anything else built to compromise systems or harvest credentials.",
+            "Material that impersonates a real person or organisation, forged identity or financial documents, and content designed to deceive people into parting with money.",
+            "Content that infringes someone else's copyright, trademark or other intellectual property.",
+          ],
+        },
+        {
+          h: "3. Conduct you must not engage in",
+          body: [
+            "Reselling, sublicensing or publishing your API key, and redistributing a paid document you bought. One purchase covers one buyer's own use.",
+            "Presenting model output as professional medical, legal or financial advice, or as the verified statement of a licensed professional.",
+            "Attempting to bypass balance checks, replay payment callbacks, forge delivery links, or probe the payment endpoints. These attempts are logged and blocked.",
+            "Using the service in a way that breaks the law where you are, or that breaches the usage policy of the upstream provider your request is routed to. A request they refuse is refused here too.",
+          ],
+        },
+        {
+          h: "4. High-risk uses we do not support",
+          body: [
+            "Do not build anything on this API where a wrong answer causes physical harm or an irreversible loss: medical diagnosis or treatment decisions, control of vehicles or industrial equipment, and automated decisions about someone's credit, employment, housing or legal status.",
+            "This is an individually operated relay without an uptime guarantee. Treat it accordingly when you choose what to build on it.",
+          ],
+        },
+        {
+          h: "5. How we enforce this",
+          body: [
+            "We act on credible evidence of a violation, whether we find it ourselves or it is reported to us. Depending on severity we warn you, revoke the key, or close the account.",
+            "For a first violation that looks minor and unintentional, we normally just tell you and let you fix it.",
+            "When we close an account for a serious violation, the unused balance is not refunded. In every other case the unused balance is refunded under the refund policy.",
+            "We do not read your prompts to police them: we store token counts, not text. Enforcement happens when a violation is reported, when an upstream provider flags a pattern of refusals, or when payment or usage behaviour indicates abuse.",
+          ],
+        },
+        {
+          h: "6. Reporting abuse",
+          body: [
+            `If you believe this service is being used to do something on this page, email ${CONTACT_EMAIL} or ${CONTACT_EMAIL_CN} with whatever evidence you have. We read every report and reply within one business day.`,
+            "This policy forms part of the terms of service, and we may update it as new abuse patterns appear. The revision date at the top always reflects the current version.",
+          ],
+        },
+      ],
+    },
   },
   zh: {
     terms: {
@@ -525,6 +590,69 @@ export const legal: Record<Locale, Record<LegalSlug, LegalDoc>> = {
           h: "变更",
           body: [
             "本政策若有变更，页首的更新日期会同步变更。我们不会在不更新本页的情况下悄悄开始收集新的数据。",
+          ],
+        },
+      ],
+    },
+    aup: {
+      title: "可接受使用政策",
+      metaDescription:
+        "TokShop 可接受使用政策：转发式模型接口可以用来做什么、禁止的内容与行为，以及违规如何处置。",
+      updated: LEGAL_UPDATED,
+      intro:
+        "本政策规定你可以用 TokShop 的 API Key 与我们出售的文档做什么、不可以做什么。" +
+        "它约束所有使用本服务的人，也约束你把 Key 分享给的那些人。",
+      sections: [
+        {
+          h: "一、这项服务到底是什么",
+          body: [
+            "TokShop 是一个独立的转售方。我们提供一个 OpenAI 兼容的 HTTP 接口，把你的请求转发给第三方开源大语言模型并返回结果，并按 token 向你计费。",
+            "我们与 DeepSeek、阿里云（Qwen）、智谱（GLM）、月之暗面（Kimi）、OpenAI 及任何其他模型开发方均无附属、代理、背书或赞助关系。本站出现模型名称，仅用于标识某次请求被转发到哪个第三方模型。「OpenAI 兼容」描述的是 HTTP 请求的格式，不代表与 OpenAI 存在任何关系。",
+            "本站价目中只有文本模型。我们不提供任何图像、视频或语音生成接口，通过我们的 API 也无法选择此类模型。",
+          ],
+        },
+        {
+          h: "二、禁止生成的内容",
+          body: [
+            "任何涉及未成年人的性内容，以及任何试图诱导生成此类内容的行为。这是唯一不警告、不申诉的违规：立即吊销 Key、关闭账号，并配合有关部门。",
+            "露骨的色情材料，以及以引起性兴奋为目的的内容。",
+            "煽动或策划暴力、恐怖主义、自我伤害的内容，或提供可造成大规模伤害之武器的操作性指导。",
+            "针对受保护特征进行骚扰、威胁或仇恨言论的内容。",
+            "恶意软件、勒索软件、漏洞利用代码、钓鱼页面，以及其他用于攻陷系统或窃取凭证的产物。",
+            "冒充真实个人或机构的材料、伪造的身份或金融文件，以及意在骗取他人钱财的内容。",
+            "侵犯他人著作权、商标权或其他知识产权的内容。",
+          ],
+        },
+        {
+          h: "三、禁止的行为",
+          body: [
+            "转售、再授权或公开你的 API Key，以及二次分发你购买的付费文档。一次购买仅覆盖购买者本人使用。",
+            "把模型输出当作专业的医疗、法律或财务建议对外提供，或冒充持牌专业人士的意见。",
+            "试图绕过余额校验、重放支付回调、伪造交付链接或探测支付接口。此类尝试会被记录并拦截。",
+            "以你所在地法律禁止的方式使用本服务，或违反请求被转发到的上游提供方的使用政策。上游拒绝的请求，在本站同样会被拒绝。",
+          ],
+        },
+        {
+          h: "四、我们不支持的高风险用途",
+          body: [
+            "不要把本接口用在「答错就会造成人身伤害或不可逆损失」的场景：医疗诊断与治疗决策、车辆或工业设备控制，以及对个人信贷、就业、住房、法律身份的自动化裁决。",
+            "这是一个由个人运营、不提供可用性承诺的转发服务。请据此判断什么该建在它上面。",
+          ],
+        },
+        {
+          h: "五、我们如何处置违规",
+          body: [
+            "无论是我们自己发现还是他人举报，只要有可信证据，我们就会处理。视严重程度，我们会警告、吊销 Key，或关闭账号。",
+            "对首次发生、看起来轻微且非故意的违规，我们通常只是告知你并给你改正的机会。",
+            "因严重违规而被我们关闭的账号，未消费余额不予退还。其余所有情形下，未消费余额按退款政策退还。",
+            "我们不会为了监管而去读你的 prompt：我们只存 token 数，不存文本。触发处置的来源是他人举报、上游提供方反馈的异常拒绝模式，或支付与用量行为显示出滥用迹象。",
+          ],
+        },
+        {
+          h: "六、举报滥用",
+          body: [
+            `如果你认为有人正在用本服务做本页所列之事，请把你掌握的证据发到 ${CONTACT_EMAIL} 或 ${CONTACT_EMAIL_CN}。每一份举报我们都会看，并在一个工作日内回复。`,
+            "本政策构成服务条款的一部分。随着新的滥用形态出现，我们可能更新本政策，页首的更新日期始终指向当前版本。",
           ],
         },
       ],

@@ -71,7 +71,7 @@ async function main() {
 
   // ---------- S8 commerce and legal pages ----------
   // Payment onboarding reviewers check for these, and so do buyers.
-  for (const slug of ["terms", "refund", "privacy"]) {
+  for (const slug of ["terms", "refund", "privacy", "aup", "contact"]) {
     const en = await fetch(`${BASE}/${slug}`);
     const enText = await en.text();
     const zh = await fetch(`${BASE}/zh/${slug}`);
@@ -103,9 +103,44 @@ async function main() {
     dlText.includes("$1.00") && zhDlText.includes("$1.00"));
   check("S40 legal pages linked from every footer",
     home.includes("/terms") && home.includes("/refund") &&
-    home.includes("/privacy") && home.includes("/downloads"));
+    home.includes("/privacy") && home.includes("/downloads") &&
+    home.includes("/aup") && home.includes("/contact"));
   check("S41 llms.txt advertises policies and downloads",
-    llmsText.includes("/refund") && llmsText.includes("/downloads"));
+    llmsText.includes("/refund") && llmsText.includes("/downloads") &&
+    llmsText.includes("/aup") && llmsText.includes("/contact"));
+
+  // ---------- merchant identity, required by payment-provider review ----------
+  // The seller's legal name and address must be reachable from any page, in
+  // both languages, not buried in one paragraph of one document.
+  check("S43 operator name and address in every footer (en+zh)",
+    home.includes("Wang Qiyuan") && home.includes("Beijing 100192") &&
+    zhHomeText.includes("王启源") && zhHomeText.includes("100192"));
+  const terms = await (await fetch(`${BASE}/terms`)).text();
+  const zhTerms = await (await fetch(`${BASE}/zh/terms`)).text();
+  check("S44 legal pages carry the seller identity block",
+    terms.includes("Who you are buying from") &&
+    terms.includes("Beijing 100192") &&
+    zhTerms.includes("你在向谁购买") && zhTerms.includes("100192"));
+  const orgLd = home.match(/"@type":"Organization".*?\}\},/s)?.[0] ?? home;
+  check("S45 Organization JSON-LD carries legalName and PostalAddress",
+    orgLd.includes('"legalName"') && orgLd.includes('"PostalAddress"') &&
+    orgLd.includes('"postalCode":"100192"'));
+
+  // ---------- AI transparency, required for AI products ----------
+  const aup = await (await fetch(`${BASE}/aup`)).text();
+  const zhAup = await (await fetch(`${BASE}/zh/aup`)).text();
+  check("S46 AUP states non-affiliation and text-only catalog (en+zh)",
+    /not affiliated with/i.test(aup) && /text models only/i.test(aup) &&
+    zhAup.includes("无附属") && zhAup.includes("只有文本模型"));
+  check("S47 AUP prohibits the content a reviewer looks for",
+    /minors/i.test(aup) && /malware/i.test(aup) &&
+    zhAup.includes("未成年人") && zhAup.includes("恶意软件"));
+
+  // A merchant-of-record reviewer treats "we will complete your order by hand"
+  // as an offer to settle payments off-rail. It must not appear anywhere.
+  const offRail = [home, zhHomeText, dlText, zhDlText].some((page) =>
+    /by hand|手工为你完成订单/i.test(page));
+  check("S48 no off-rail manual order fulfilment offered", !offRail);
   const delivery = await fetch(`${BASE}/downloads/success?order=nope&t=nope`);
   check("S42 delivery page noindex and refuses a forged link",
     delivery.status === 200 &&

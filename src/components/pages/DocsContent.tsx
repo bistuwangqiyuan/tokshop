@@ -194,6 +194,10 @@ export default function DocsContent({ locale }: { locale: Locale }) {
             {CONTACT_EMAIL_CN}
           </a>
         </p>
+
+        <p className="mt-12 border-t border-zinc-800 pt-6 text-xs leading-relaxed text-zinc-500">
+          {dict[locale].disclaimer}
+        </p>
       </main>
       <Footer locale={locale} />
     </div>

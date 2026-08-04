@@ -59,7 +59,7 @@ export const DOWNLOAD_PRODUCTS: readonly DownloadProduct[] = [
       en: {
         title: "The Open-Model API Handbook: Selection and Cost Engineering",
         summary:
-          "How we actually run a profitable pay-as-you-go API reselling open-source models: the unit economics, the billing code that cannot lose money on a dropped stream, the payment idempotency design, and the automated content engine behind this site. Written from a live production system, not from theory.",
+          "How a pay-as-you-go API reselling open-source models is actually built: the unit economics, the billing code that cannot lose money on a dropped stream, the payment idempotency design, and the automated content engine behind this site. Written from a live production system, not from theory.",
         bullets: [
           "Unit economics: the retail multiplier, what each payment rail really costs, and why a one-dollar order behaves completely differently on each",
           "Per-token billing that survives aborted streams, with the exact settlement point in the response pipeline",
@@ -67,12 +67,13 @@ export const DOWNLOAD_PRODUCTS: readonly DownloadProduct[] = [
           "Model selection: how to compare open-source models on cost per useful answer rather than price per million tokens",
           "Appendix generated at download time from the live price catalog, so the numbers are never stale",
         ],
-        pages: "Markdown and in-browser reader, bilingual, free lifetime updates",
+        pages:
+          "Markdown and in-browser reader, bilingual, updates to this edition included",
       },
       zh: {
         title: "《开源大模型 API 选型与成本优化实战手册》",
         summary:
-          "一套真实在跑、真实赚钱的开源大模型 API 转售系统是怎么做的：单位经济模型、流式中断也不会丢账的计费代码、支付幂等设计，以及驱动本站的自动化内容引擎。全部取自生产环境，不是纸上推演。",
+          "一套真实在跑的开源大模型 API 转售系统是怎么搭起来的：单位经济模型、流式中断也不会丢账的计费代码、支付幂等设计，以及驱动本站的自动化内容引擎。全部取自生产环境，不是纸上推演。",
         bullets: [
           "单位经济模型：零售倍率怎么定，两条支付通道的真实成本，以及为什么 1 美元订单在两条通道上的经济性天差地别",
           "按 token 计费如何做到流式请求被中断也不丢账，以及结算点该放在响应管线的哪一步",
@@ -80,7 +81,7 @@ export const DOWNLOAD_PRODUCTS: readonly DownloadProduct[] = [
           "模型选型：如何按「每个有效答案的成本」而不是「每百万 token 单价」来横向比较开源模型",
           "附录在下载时从实时价目库生成，数字永不过期",
         ],
-        pages: "Markdown 文件 + 在线阅读，中英双语，终身免费更新",
+        pages: "Markdown 文件 + 在线阅读，中英双语，本版更新免费",
       },
     },
   },

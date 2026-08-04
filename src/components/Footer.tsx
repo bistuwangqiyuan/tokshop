@@ -6,9 +6,11 @@ import {
   localePath,
   type Locale,
 } from "@/lib/i18n";
+import { OPERATOR } from "@/lib/site";
 
 export default function Footer({ locale = "en" }: { locale?: Locale }) {
   const t = dict[locale].footer;
+  const operator = OPERATOR[locale];
   const p = (path: string) => localePath(locale, path);
   return (
     <footer className="border-t border-zinc-800 py-8 text-center text-sm text-zinc-500">
@@ -41,7 +43,18 @@ export default function Footer({ locale = "en" }: { locale?: Locale }) {
         ·{" "}
         <Link href={p("/privacy")} className="underline hover:text-zinc-300">
           {t.privacy}
+        </Link>{" "}
+        ·{" "}
+        <Link href={p("/aup")} className="underline hover:text-zinc-300">
+          {t.aup}
+        </Link>{" "}
+        ·{" "}
+        <Link href={p("/contact")} className="underline hover:text-zinc-300">
+          {t.contactPage}
         </Link>
+      </p>
+      <p className="mt-3 text-xs text-zinc-600">
+        {operator.name} · {operator.role} · {operator.address}
       </p>
       <p className="mt-2">
         {t.contact}:{" "}

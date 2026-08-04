@@ -174,6 +174,17 @@ export default async function PricingContent({ locale }: { locale: Locale }) {
               </Link>
             ))}
           </div>
+          {/* The cards above land on a login wall. Guest checkout is the only
+              way to see a real payment page without an account, so say so. */}
+          <p className="mt-4 text-sm text-zinc-500">
+            {t.guestHint}{" "}
+            <Link
+              href={p("/downloads")}
+              className="text-emerald-400 underline hover:text-emerald-300"
+            >
+              {t.guestLink}
+            </Link>
+          </p>
         </section>
 
         <section className="mt-14 rounded-lg border border-zinc-800 bg-zinc-900 p-6">
@@ -212,6 +223,10 @@ export default async function PricingContent({ locale }: { locale: Locale }) {
             {t.ctaDocs}
           </Link>
         </div>
+
+        <p className="mt-12 border-t border-zinc-800 pt-6 text-xs leading-relaxed text-zinc-500">
+          {dict[locale].disclaimer}
+        </p>
       </main>
       <Footer locale={locale} />
     </div>

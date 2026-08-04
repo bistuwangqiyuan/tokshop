@@ -15,6 +15,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/terms`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/refund`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/privacy`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/aup`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/contact`, changeFrequency: "yearly", priority: 0.4 },
     // Chinese versions
     { url: `${SITE_URL}/zh`, changeFrequency: "daily", priority: 0.9 },
     { url: `${SITE_URL}/zh/pricing`, changeFrequency: "weekly", priority: 0.8 },
@@ -28,6 +30,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/zh/terms`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/zh/refund`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/zh/privacy`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/zh/aup`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/zh/contact`, changeFrequency: "yearly", priority: 0.4 },
   ];
   const sql = getEngineSql();
   if (!sql) return statics;

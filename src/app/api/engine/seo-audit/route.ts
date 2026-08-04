@@ -57,9 +57,9 @@ type PageAudit = {
 // Marketing pages that must carry reciprocal en/zh-CN hreflang
 const HREFLANG_PAGES = new Set([
   "/", "/pricing", "/docs", "/blog", "/downloads",
-  "/terms", "/refund", "/privacy",
+  "/terms", "/refund", "/privacy", "/aup", "/contact",
   "/zh", "/zh/pricing", "/zh/docs", "/zh/blog", "/zh/downloads",
-  "/zh/terms", "/zh/refund", "/zh/privacy",
+  "/zh/terms", "/zh/refund", "/zh/privacy", "/zh/aup", "/zh/contact",
 ]);
 
 const AI_UA_REQUIRED = [
@@ -209,9 +209,9 @@ async function run(articleLimit: number) {
   // ---------- page audits (both languages) ----------
   const staticPaths = [
     "/", "/pricing", "/docs", "/blog", "/downloads",
-    "/terms", "/refund", "/privacy",
+    "/terms", "/refund", "/privacy", "/aup", "/contact",
     "/zh", "/zh/pricing", "/zh/docs", "/zh/blog", "/zh/downloads",
-    "/zh/terms", "/zh/refund", "/zh/privacy",
+    "/zh/terms", "/zh/refund", "/zh/privacy", "/zh/aup", "/zh/contact",
   ];
   const articles = await listArticles(sql, articleLimit);
   const audits: PageAudit[] = [];

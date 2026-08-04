@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CONTACT_EMAIL, CONTACT_EMAIL_CN } from "@/lib/i18n";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import {
+  OPERATOR,
+  OPERATOR_POSTAL,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_URL,
+} from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -53,6 +59,9 @@ const ORG_JSONLD = {
         height: 512,
       },
       sameAs: ["https://github.com/bistuwangqiyuan/tokshop"],
+      legalName: OPERATOR.en.name,
+      founder: { "@type": "Person", name: OPERATOR.en.name },
+      address: { "@type": "PostalAddress", ...OPERATOR_POSTAL },
       email: CONTACT_EMAIL,
       contactPoint: [
         {

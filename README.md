@@ -93,15 +93,21 @@ BASE_URL=https://tokshop.xyz node scripts/lighthouse.mjs
 
 代码侧已完成。完整资料清单、风险与税务口径见 [`PAYMENTS_SETUP.md`](PAYMENTS_SETUP.md)。
 
-**当前进度（2026-08-01）**：Creem 账号已注册，KYC / 店铺审核中。审核期间可先取 **Test Mode** API Key 跑通全流程（不收真钱）；审核通过后再换 live Key。虎皮椒尚未开户。
+**当前进度（2026-08-04）**：Creem 账号已注册，KYC / 店铺审核中。审核期间可先取 **Test Mode** API Key 跑通全流程（不收真钱）；审核通过后再换 live Key。虎皮椒尚未开户。
 
 摘要：
 
-1. Creem（https://creem.io ）：审核期间打开侧边栏 Test Mode，取 test `CREEM_API_KEY` + 测试 Webhook Secret，发给我即可启用测试收款；审核通过后换 live Key，设 `CREEM_TEST_MODE=false`，Webhook 仍填 `https://tokshop.xyz/api/webhooks/creem`
+1. Creem（https://creem.io ）：审核期间打开侧边栏 Test Mode，取 test `CREEM_API_KEY` + 测试 Webhook Secret；审核通过后换 live Key，设 `CREEM_TEST_MODE=false`，Webhook 仍填 `https://tokshop.xyz/api/webhooks/creem`
 2. 虎皮椒（https://www.xunhupay.com ，备选易收米）：提交身份证、手机号、本人银行卡与网站地址，回调填 `https://tokshop.xyz/api/webhooks/xunhupay`，取 `XUNHU_APPID` / `XUNHU_APPSECRET`（如支付宝为独立应用则另取一套）
-3. 写入 Vercel 环境变量后重新部署，代码无需改动
+3. 写入 Vercel 环境变量后重新部署，再跑一条命令自动接通与自检：
 
-法务页面（Creem KYC 与虎皮椒微信侧审核的硬性检查项）已上线：`/terms`、`/refund`、`/privacy`，中英双语。
+```bash
+CREEM_API_KEY=... CREEM_WEBHOOK_SECRET=... npm run creem:activate
+```
+
+该脚本按 Key 前缀自动判定 test/live、在 Creem 侧建好全部商品与税类、交叉核对环境是否与 `CREEM_TEST_MODE` 一致、验证 Webhook 验签与幂等，并打印一条可人工付款的收银台链接。代码无需改动。
+
+合规页面（支付方审核的硬性检查项）已全部上线，中英双语：`/terms`、`/refund`、`/privacy`、`/aup`（可接受使用政策）、`/contact`（含经营者姓名与经营地址）。经营者身份与地址同时出现在每页页脚与 Organization JSON-LD 中。
 
 ## 切换自有推理端点（脱离 AI Gateway）
 

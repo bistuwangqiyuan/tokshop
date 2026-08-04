@@ -73,10 +73,12 @@ async function run() {
   if (!source)
     return NextResponse.json({ ok: false, reason: "no topic available" }, { status: 200 });
 
-  // 2. generate + QC + publish (one retry — drafts are discarded on QC
-  // failure, so a second attempt is cheap and keeps the 2h cadence useful)
+  // 2. generate + QC + publish. Drafts are discarded on QC failure, and the
+  // model intermittently omits a required element (usually the internal
+  // links), so retry rather than lose the slot: two attempts still skipped a
+  // publish often enough to matter, and three fit well inside maxDuration.
   let result: Awaited<ReturnType<typeof generateArticle>> = { ok: false };
-  for (let attempt = 0; attempt < 2 && !result.ok; attempt++) {
+  for (let attempt = 0; attempt < 3 && !result.ok; attempt++) {
     try {
       result = await generateArticle(sql, source);
     } catch (e) {

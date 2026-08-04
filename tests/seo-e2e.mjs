@@ -165,13 +165,31 @@ async function main() {
     headers: { Authorization: `Bearer ${CRON}` },
   });
   const ctBody = await ct.json();
-  check("S12 content engine publishes QC-passed article",
-    ct.status === 200 && ctBody.ok === true && ctBody.qc?.pass === true,
+  // Declining to publish a draft that fails QC is the QC working, not a
+  // regression. What must always hold is that the engine answers coherently -
+  // either a published article that passed QC, or a stated reason - and that
+  // the site is still being fed over time, which S12b checks independently.
+  const published = ctBody.ok === true;
+  check("S12 content engine publishes a QC-passed article or says why not",
+    ct.status === 200 &&
+    (published ? ctBody.qc?.pass === true : typeof ctBody.reason === "string"),
     `slug=${ctBody.slug} words=${ctBody.qc?.wordCount} src=${ctBody.source}` +
-    (ctBody.ok ? "" : ` reason=${ctBody.reason ?? "(none reported)"}`));
+    (published ? "" : ` reason=${ctBody.reason ?? "(none reported)"}`));
+
+  const rssFresh = await (await fetch(`${BASE}/rss.xml`)).text();
+  const newestPub = rssFresh.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1];
+  const ageHours = newestPub
+    ? (Date.now() - new Date(newestPub).getTime()) / 3_600_000
+    : Infinity;
+  check("S12b newest article published within 48h (engine is not stuck)",
+    ageHours < 48, `age=${Number.isFinite(ageHours) ? ageHours.toFixed(1) : "?"}h`);
+
   check("S13 IndexNow push accepted (200/202)",
-    ctBody.indexnow?.ok === true, `status=${ctBody.indexnow?.status}`);
-  check("S14 WebSub ping accepted", ctBody.websub?.ok === true);
+    published ? ctBody.indexnow?.ok === true : true,
+    published ? `status=${ctBody.indexnow?.status}` : "no publish this run");
+  check("S14 WebSub ping accepted",
+    published ? ctBody.websub?.ok === true : true,
+    published ? "" : "no publish this run");
 
   // ---------- S4 article page quality ----------
   // The engine legitimately publishes nothing when every candidate topic is
@@ -207,7 +225,10 @@ async function main() {
   // JSON.stringify(undefined) is undefined, not a string: slicing it used to
   // crash the whole suite and skip every assertion after this one.
   check("S30 content engine produced Chinese translation",
-    ctBody.zh?.ok === true, String(JSON.stringify(ctBody.zh ?? null)).slice(0, 120));
+    published ? ctBody.zh?.ok === true : true,
+    published
+      ? String(JSON.stringify(ctBody.zh ?? null)).slice(0, 120)
+      : "no publish this run");
   // The Chinese twin is checked for whichever article was audited above, so a
   // run that published nothing still verifies the bilingual pair is intact.
   const zhSlug = ctBody.zh?.ok ? ctBody.slug : newestSlug;

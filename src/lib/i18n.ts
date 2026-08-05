@@ -37,12 +37,36 @@ export const dict = {
       privacy: "Privacy",
       aup: "Acceptable use",
       contactPage: "Contact",
+      about: "About",
     },
     disclaimer:
       "TokShop is an independent reseller. It is not affiliated with, endorsed by or sponsored by DeepSeek, Alibaba Cloud, Zhipu AI, Moonshot AI or OpenAI. Model names identify which third-party model a request is routed to, and OpenAI-compatible refers to the request format only.",
+    aboutPage: {
+      title: "About TokShop",
+      sub: "A small, self-serve shop for prepaid open-model API credits and practical digital documents. No venture story, no invented metrics.",
+      paragraphs: [
+        "TokShop sells two things: prepaid USD credits that buy OpenAI-compatible API calls to open-source models (DeepSeek, GLM, Qwen, Kimi), and a one-dollar handbook written from this production system.",
+        "There is no full-time staff. Checkout, delivery, metering and content publishing are software. A person still reads the support inbox for refunds, data requests and anything an automated lookup cannot resolve.",
+        "We do not invent user counts, star ratings or SLA guarantees. If a payment rail is not yet configured, the site says so instead of offering off-rail settlement.",
+      ],
+      sellerTitle: "Who operates this shop",
+      operator: "Operator",
+      address: "Business address",
+      contact: "Contact",
+      paymentsTitle: "How money moves",
+      payments: [
+        "Card, Apple Pay and Google Pay: Creem is the merchant of record. It collects the payment, remits VAT/GST/sales tax where required, and pays out to the operator.",
+        "Alipay and WeChat Pay (when enabled): a mainland China technical service provider; funds settle from the wallet networks to the operator. That rail is not a merchant of record for tax.",
+        "Credits are prepaid usage balance, not cash-like stored value. Unused credits follow the published refund policy.",
+      ],
+      linkPricing: "Pricing",
+      linkDownloads: "Paid downloads",
+      linkContact: "Contact",
+      linkTerms: "Terms",
+    },
     contactPage: {
       title: "Contact",
-      sub: "One person reads this inbox and answers within one business day. There is no ticket system to fight and no bot in the way.",
+      sub: "One person reads this inbox and answers within one business day. If you include an order id or redeem code, an automated first reply looks up the payment status immediately; a person still handles refunds and everything else.",
       emailIntl: "Email (international)",
       emailCn: "Email (China)",
       topicsTitle: "What to write to us about",
@@ -104,7 +128,7 @@ export const dict = {
         "Save the redeem code below. It is how you get back to this document from any browser, and it never expires.",
       redeemCode: "Your redeem code",
       redeemCodeWarn:
-        "Copy this somewhere safe. We cannot email it to you automatically yet.",
+        "Copy this somewhere safe. We also email it to the address you gave at checkout when mail delivery is configured.",
       pendingTitle: "Confirming your payment",
       pendingSub:
         "The payment provider has not confirmed yet. This usually takes a few seconds - this page refreshes itself. If it persists, email support with the order id below.",
@@ -269,12 +293,36 @@ export const dict = {
       privacy: "隐私政策",
       aup: "使用政策",
       contactPage: "联系我们",
+      about: "关于",
     },
     disclaimer:
       "TokShop 为独立转售方，与 DeepSeek、阿里云、智谱、月之暗面、OpenAI 均无附属、背书或赞助关系。模型名称仅用于标识请求被转发到哪个第三方模型；「OpenAI 兼容」仅指请求格式。",
+    aboutPage: {
+      title: "关于 TokShop",
+      sub: "一家自助的小店：预付开源大模型 API 额度，以及从这套生产系统写出来的实战文档。没有融资故事，也不编造用户数。",
+      paragraphs: [
+        "TokShop 只卖两样东西：用于调用开源模型（DeepSeek、GLM、通义、Kimi）的预付美元额度，以及定价一美元、取自本站生产实践的手册。",
+        "没有全职团队。结账、交付、计量与内容发布都是软件完成。退款、数据请求，以及自动查询解决不了的事，仍由本人阅读支持邮箱处理。",
+        "我们不编造用户数、星级评价或 SLA。支付通道尚未配置时，站点会如实说明，而不是提供线下代收款。",
+      ],
+      sellerTitle: "经营者",
+      operator: "经营者",
+      address: "经营地址",
+      contact: "联系方式",
+      paymentsTitle: "钱怎么走",
+      payments: [
+        "信用卡 / Apple Pay / Google Pay：由 Creem 作为记录商户（Merchant of Record）收款，并代收代缴适用的 VAT/GST/销售税，再向经营者结算。",
+        "支付宝 / 微信支付（开通后）：经国内技术服务方对接，资金由钱包网络结算到经营者账户；该通道不是税务意义上的记录商户。",
+        "额度为预付使用余额，不是类现金储值。未使用额度按已公布的退款政策处理。",
+      ],
+      linkPricing: "价格",
+      linkDownloads: "资料下载",
+      linkContact: "联系我们",
+      linkTerms: "服务条款",
+    },
     contactPage: {
       title: "联系我们",
-      sub: "这个邮箱由本人查看，一个工作日内回复。没有工单系统要你周旋，也没有机器人挡在中间。",
+      sub: "这个邮箱由本人查看，一个工作日内回复。若你附上订单号或兑换码，系统会先自动查一次支付状态；退款与其余事务仍由本人处理。",
       emailIntl: "邮箱（国际）",
       emailCn: "邮箱（中国）",
       topicsTitle: "什么事可以写信给我们",
@@ -332,7 +380,8 @@ export const dict = {
       successSub:
         "请保存下方的兑换码。它是你在任意浏览器上取回这份文档的凭证，长期有效。",
       redeemCode: "你的兑换码",
-      redeemCodeWarn: "请复制到安全的地方。我们目前还无法自动把它发到你邮箱。",
+      redeemCodeWarn:
+        "请复制到安全的地方。邮件通道配置后，我们也会把兑换码发到你结账时填写的邮箱。",
       pendingTitle: "正在确认支付",
       pendingSub:
         "支付方尚未确认到账。通常只需几秒 —— 本页会自动刷新。若长时间未变，请带上下方订单号联系客服。",

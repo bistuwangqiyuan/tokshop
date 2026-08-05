@@ -10,7 +10,8 @@
     "db:push": "drizzle-kit push",
     "db:seed": "node scripts/seed.mjs",
     "test:e2e": "node tests/e2e.mjs",
-    "creem:activate": "node scripts/creem-activate.mjs"
+    "creem:activate": "node scripts/creem-activate.mjs",
+    "payments:golive": "node scripts/payments-golive.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

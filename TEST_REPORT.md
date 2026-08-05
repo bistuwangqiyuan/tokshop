@@ -202,9 +202,26 @@ assert round(upstream * 1.5, 8) == 0.00000546    # 零售价 = 成本 x 1.5，�
 3. **可选的 PSI 步骤把整个 CI 拖红**：keyless PageSpeed Insights 每日配额极小，7 个 URL 全部 429 后脚本退出 1；虽然该步骤标了 `continue-on-error`，job 汇总仍显示失败，掩盖了权威门禁 Lighthouse 的 13/13 全绿。修复：`scripts/psi.mjs` 在「无 API Key 且全部 URL 均因 429 失败」时判定为跳过而非失败，其余任何失败仍照常退出 1。
 4. **本机测试缺环境变量导致的假失败**：S06 IndexNow 校验依赖本地 `INDEXNOW_KEY`，未设置时请求 `/undefined.txt`。实测线上 key 文件返回 200 且内容匹配，非站点缺陷。
 
+## 全球收款软件闭环（2026-08-06）
+
+- 目标：通道一亮灯即可无人交付收据；开户仍须人做。
+- 本机构建：`npx next build` 成功，路由含 `/about`、`/zh/about`、`/api/webhooks/agentmail`、`/api/engine/payments-health`。
+- 客观门禁：`node scripts/payments-golive.mjs` 在无 Key 时 exit 2，并打印「Human gate (phase 0)」——与生产 `/api/checkout/options` 返回 `rails: []` 一致（2026-08-06 实测）。
+
+| 交付 | 路径 | 验收 |
+| --- | --- | --- |
+| 结算后收据/兑换码邮件 | `src/lib/mail.ts` + `scheduleSettlementNotice`（Creem/虎皮椒 webhook 与下载 claim） | 缺 `AGENTMAIL_API_KEY` 时 skip，不阻断结算 |
+| 客服自动回复 | `POST /api/webhooks/agentmail` + `src/lib/support.ts` | 伪造 Svix 签名 → 401（e2e T18） |
+| 支付健康 | `GET/POST /api/engine/payments-health`（cron）+ `/api/health.payments` | 无轨记 `ops_log` status=`warn`；调度已加入 `engine-scheduler.yml` |
+| About | `/about` · `/zh/about` | 经营者身份 + MoR/TSP 边界；进 sitemap/footer/llms/seo-audit/Lighthouse |
+| 环境模板 | `.env.example` | gitignore 例外跟踪 |
+| 一键上线 | `npm run payments:golive` | Key 写入并 redeploy 后激活商品与 webhook 自检 |
+
+**仍阻塞真钱（合法合规、人做）**：Creem KYC / Test·Live Key；可选虎皮椒实名开户；可选 AgentMail API Key 与入站 Webhook Secret。拿到后按 `PAYMENTS_SETUP.md` 写入 Vercel → redeploy → `npm run payments:golive`。
+
 ## 边界与如实声明
 
-1. **支付**：Creem 已注册、审核中；虎皮椒尚未开户（法律要求实名主体，AI 无法代办）。两条通道的建单、验签、幂等、结算、退款回收链路已按各自官方规范实现并全量测试（Creem HMAC-SHA256；虎皮椒 MD5 验签 + 回调后二次回查金额）；接入真实收款只需按 `PAYMENTS_SETUP.md` 配置环境变量并重新部署，代码无需改动。
+1. **支付**：Creem 已注册、审核中；虎皮椒尚未开户（法律要求实名主体，AI 无法代办）。两条通道的建单、验签、幂等、结算、退款回收链路已按各自官方规范实现并全量测试（Creem HMAC-SHA256；虎皮椒 MD5 验签 + 回调后二次回查金额）；软件侧收据邮件与健康探针已就绪；接入真实收款仍须按 `PAYMENTS_SETUP.md` 配置环境变量并重新部署。
 2. **上游额度**：当前上游走 Vercel AI Gateway 账户额度，本轮全部测试实际消耗 < $0.01。
 3. **T8 的"模拟"边界**：模拟的是 Creem 服务器发出 HTTP 请求这一动作（用与生产一致的密钥签名），验签、幂等、入账逻辑均为生产代码真实执行，无任何测试专用旁路。
 4. **llms.txt**：Google 已公开声明不使用 llms.txt；保留它是面向其他 AI 引擎与工具的低成本机读入口，不据此宣称任何 Google 收益。

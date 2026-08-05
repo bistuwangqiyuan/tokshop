@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { setAccessCookie, verifyToken } from "@/lib/entitlement";
+import { scheduleSettlementNotice } from "@/lib/notify";
 import { settleOrder } from "@/lib/orders";
 import { queryOrder } from "@/lib/xunhupay";
 
@@ -48,7 +49,11 @@ export async function GET(req: NextRequest) {
     for (const channel of ["alipay", "wechat"] as const) {
       const remote = await queryOrder(orderId, channel).catch(() => null);
       if (remote?.status === "OD") {
-        await settleOrder({ orderId, providerOrderId: remote.openOrderId });
+        const settled = await settleOrder({
+          orderId,
+          providerOrderId: remote.openOrderId,
+        });
+        scheduleSettlementNotice(settled);
         break;
       }
     }

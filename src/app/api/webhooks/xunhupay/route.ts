@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { scheduleSettlementNotice } from "@/lib/notify";
 import { settleOrder } from "@/lib/orders";
 import { fromTradeOrderId, queryOrder, verifyNotify } from "@/lib/xunhupay";
 
@@ -106,7 +107,8 @@ export async function POST(req: NextRequest) {
   const providerOrderId =
     remote.openOrderId ?? params.open_order_id ?? params.oderid ?? null;
 
-  await settleOrder({ orderId, providerOrderId });
+  const settled = await settleOrder({ orderId, providerOrderId });
+  scheduleSettlementNotice(settled);
 
   // Audit trail. Recorded after settlement so a retry following a transient
   // failure is still able to settle - settleOrder is itself idempotent.

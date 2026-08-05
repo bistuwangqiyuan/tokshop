@@ -159,7 +159,9 @@ CREEM_API_KEY=creem_test_xxx CREEM_WEBHOOK_SECRET=xxx npm run creem:activate
 - 只有虎皮椒：中国用户可付，海外用户看不到支付方式。
 - 一条都没有：`/api/checkout` 仍会创建 pending 订单并提示联系客服，站点不报错。
 
-## 六、新增环境变量总表
+## 六、环境变量总表
+
+完整模板见 [`.env.example`](.env.example)（只含变量名，不含密钥）。
 
 | 变量 | 必填 | 默认 | 用途 |
 | --- | --- | --- | --- |
@@ -172,3 +174,28 @@ CREEM_API_KEY=creem_test_xxx CREEM_WEBHOOK_SECRET=xxx npm run creem:activate
 | `XUNHU_ALIPAY_APPSECRET` | 否 | 回落到主应用 | 支付宝侧独立应用密钥 |
 | `CNY_PER_USD` | 否 | `7.3` | 国内通道的美元折人民币汇率 |
 | `DOWNLOAD_TOKEN_SECRET` | 否 | 回落到 `AUTH_SECRET` | 下载访问 Cookie 与交付页回跳签名 |
+| `AGENTMAIL_API_KEY` | 否 | 无 | 结算后自动发收据/兑换码；不填则仅站内交付 |
+| `AGENTMAIL_INBOX_ID` | 否 | `mingxinai@agentmail.to` | 发件收件箱，须与页脚客服邮箱一致 |
+| `AGENTMAIL_WEBHOOK_SECRET` | 开客服自动回复必填 | 无 | AgentMail/Svix 入站验签（`whsec_…`） |
+
+### AgentMail 客服自动回复（可选、无人值守）
+
+1. 在 https://console.agentmail.to 为 `mingxinai@agentmail.to` 建 Webhook  
+   - URL：`https://tokshop.xyz/api/webhooks/agentmail`  
+   - 事件：`message.received`  
+2. 把 Signing Secret 写入 `AGENTMAIL_WEBHOOK_SECRET`，API Key 写入 `AGENTMAIL_API_KEY`  
+3. 效果：来信若含订单 UUID 或 `TSK-` 兑换码，自动回查并回复状态；否则回一条说明「本人仍会阅读」的交接信
+
+### 软件侧已就绪、仍等人开户的清单（2026-08-06）
+
+| 项 | 状态 |
+| --- | --- |
+| 双轨结账 / webhook / 退款回收 | 代码完成 |
+| 结算后收据邮件（AgentMail） | 代码完成；待填 `AGENTMAIL_API_KEY` |
+| `/about` 中英页、支付健康探针、`.env.example` | 代码完成 |
+| `npm run payments:golive` | 拿到 Creem Key 后一键激活 |
+| Creem KYC / Test Key | **等人**（见第二节） |
+| Creem live 收款 | **等人**审核通过后换 Key |
+| 虎皮椒开户 | **等人**（见第三节）；不过审不阻塞全球卡收款 |
+
+拿到 Key 后：写入 Vercel → 重新部署 → `npm run payments:golive`（或 `npm run creem:activate`）。

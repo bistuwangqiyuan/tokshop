@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
 import { verifyWebhookSignature } from "@/lib/creem";
+import { scheduleSettlementNotice } from "@/lib/notify";
 import { reverseOrder, settleOrder } from "@/lib/orders";
 
 type CreemEvent = {
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
       orderId,
       providerOrderId: event.object?.id ?? null,
     });
+    scheduleSettlementNotice(settled);
     return NextResponse.json({ ok: true, settled: settled !== null });
   }
 

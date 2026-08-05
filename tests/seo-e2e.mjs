@@ -71,7 +71,7 @@ async function main() {
 
   // ---------- S8 commerce and legal pages ----------
   // Payment onboarding reviewers check for these, and so do buyers.
-  for (const slug of ["terms", "refund", "privacy", "aup", "contact"]) {
+  for (const slug of ["terms", "refund", "privacy", "aup", "contact", "about"]) {
     const en = await fetch(`${BASE}/${slug}`);
     const enText = await en.text();
     const zh = await fetch(`${BASE}/zh/${slug}`);
@@ -104,10 +104,18 @@ async function main() {
   check("S40 legal pages linked from every footer",
     home.includes("/terms") && home.includes("/refund") &&
     home.includes("/privacy") && home.includes("/downloads") &&
-    home.includes("/aup") && home.includes("/contact"));
+    home.includes("/aup") && home.includes("/contact") &&
+    home.includes("/about"));
   check("S41 llms.txt advertises policies and downloads",
     llmsText.includes("/refund") && llmsText.includes("/downloads") &&
-    llmsText.includes("/aup") && llmsText.includes("/contact"));
+    llmsText.includes("/aup") && llmsText.includes("/contact") &&
+    llmsText.includes("/about"));
+  const about = await (await fetch(`${BASE}/about`)).text();
+  const zhAbout = await (await fetch(`${BASE}/zh/about`)).text();
+  check("S49 about page states operator and payment rails (en+zh)",
+    /Wang Qiyuan/i.test(about) && /Creem/i.test(about) &&
+    /merchant of record/i.test(about) &&
+    zhAbout.includes("王启源") && zhAbout.includes("Creem"));
 
   // ---------- merchant identity, required by payment-provider review ----------
   // The seller's legal name and address must be reachable from any page, in

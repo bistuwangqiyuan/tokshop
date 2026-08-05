@@ -703,6 +703,53 @@ async function main() {
     }
   }
 
+  // T17: public health exposes payment rail booleans (no secrets)
+  {
+    const res = await fetch(`${BASE}/api/health`);
+    const data = await res.json().catch(() => ({}));
+    check(
+      "T17 health exposes payments.rails array",
+      res.ok && Array.isArray(data.payments?.rails),
+      JSON.stringify(data.payments)
+    );
+    check(
+      "T17 health exposes payments.mail boolean",
+      typeof data.payments?.mail === "boolean",
+      JSON.stringify(data.payments)
+    );
+    const opts = await (await fetch(`${BASE}/api/checkout/options`)).json();
+    check(
+      "T17 checkout options rails matches health",
+      Array.isArray(opts.rails) &&
+        JSON.stringify([...opts.rails].sort()) ===
+          JSON.stringify([...data.payments.rails].sort()),
+      `opts=${JSON.stringify(opts.rails)} health=${JSON.stringify(data.payments.rails)}`
+    );
+  }
+
+  // T18: AgentMail webhook rejects forged signatures (same posture as Creem)
+  {
+    const forged = await fetch(`${BASE}/api/webhooks/agentmail`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "svix-id": "msg_forged",
+        "svix-timestamp": String(Math.floor(Date.now() / 1000)),
+        "svix-signature": "v1,not-a-real-signature",
+      },
+      body: JSON.stringify({
+        event_type: "message.received",
+        event_id: `e2e_${randomUUID()}`,
+        message: { message_id: "m1", subject: "hi", text: "hello" },
+      }),
+    });
+    check(
+      "T18 agentmail forged signature rejected",
+      forged.status === 401,
+      `status=${forged.status}`
+    );
+  }
+
   console.log(`\n===== ${passed} passed, ${failed} failed =====`);
   if (failures.length > 0) {
     console.log("Failures:");

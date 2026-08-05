@@ -44,7 +44,8 @@ ${modelLines || "- See GET /v1/models"}
 - [API documentation](${SITE_URL}/docs)
 - [Blog](${SITE_URL}/blog)
 - [Paid downloads](${SITE_URL}/downloads): 1 USD digital handbooks, guest checkout by email
-- [中文首页](${SITE_URL}/zh) · [价格](${SITE_URL}/zh/pricing) · [文档](${SITE_URL}/zh/docs) · [博客](${SITE_URL}/zh/blog) · [资料下载](${SITE_URL}/zh/downloads)
+- [About](${SITE_URL}/about): operator identity, what is sold, how money moves
+- [中文首页](${SITE_URL}/zh) · [价格](${SITE_URL}/zh/pricing) · [文档](${SITE_URL}/zh/docs) · [博客](${SITE_URL}/zh/blog) · [资料下载](${SITE_URL}/zh/downloads) · [关于](${SITE_URL}/zh/about)
 
 ## Policies
 
@@ -57,6 +58,7 @@ ${modelLines || "- See GET /v1/models"}
 ## Contact
 
 - [Contact page](${SITE_URL}/contact) · [中文](${SITE_URL}/zh/contact)
+- [About](${SITE_URL}/about) · [中文](${SITE_URL}/zh/about)
 - Support email: mingxinai@agentmail.to
 - Support email (China): 13426086861@139.com
 - Operated by Wang Qiyuan, No. 12 Xiaoying East Road, Qinghe, Haidian District, Beijing 100192, China

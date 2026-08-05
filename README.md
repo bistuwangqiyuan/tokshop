@@ -69,10 +69,13 @@ npm run dev
 | `XUNHU_ALIPAY_APPID` / `XUNHU_ALIPAY_APPSECRET` | 支付宝侧独立应用；不设则支付宝回落到主应用 |
 | `CNY_PER_USD` | 国内通道折算汇率，默认 `7.3` |
 | `DOWNLOAD_TOKEN_SECRET` | 下载访问 Cookie 与交付页回跳签名；不设回落到 `AUTH_SECRET` |
+| `AGENTMAIL_API_KEY` | 可选；结算后发收据/兑换码，并驱动客服自动回复 |
+| `AGENTMAIL_INBOX_ID` | 可选；默认 `mingxinai@agentmail.to` |
+| `AGENTMAIL_WEBHOOK_SECRET` | 可选；入站邮件 Svix 验签（`/api/webhooks/agentmail`） |
 | `AI_GATEWAY_API_KEY` | 可选；不设则用 Vercel OIDC token |
 | `APP_URL` | `https://tokshop.xyz` |
 
-开户与 KYC 是唯一无法自动化的环节，所需资料、风险与税务口径见 [`PAYMENTS_SETUP.md`](PAYMENTS_SETUP.md)。
+变量名模板见 [`.env.example`](.env.example)。开户与 KYC 是唯一无法自动化的环节，所需资料、风险与税务口径见 [`PAYMENTS_SETUP.md`](PAYMENTS_SETUP.md)。拿到 Key 后跑 `npm run payments:golive`。
 
 ## 测试
 
@@ -93,7 +96,7 @@ BASE_URL=https://tokshop.xyz node scripts/lighthouse.mjs
 
 代码侧已完成。完整资料清单、风险与税务口径见 [`PAYMENTS_SETUP.md`](PAYMENTS_SETUP.md)。
 
-**当前进度（2026-08-04）**：Creem 账号已注册，KYC / 店铺审核中。审核期间可先取 **Test Mode** API Key 跑通全流程（不收真钱）；审核通过后再换 live Key。虎皮椒尚未开户。
+**当前进度（2026-08-06）**：软件侧已补齐收据邮件、About 页、支付健康探针与 `payments:golive`。Creem 账号已注册，KYC / 店铺审核仍须本人完成；生产 `availableRails()` 在 Key 写入前为空。虎皮椒尚未开户（不阻塞全球卡收款）。
 
 摘要：
 

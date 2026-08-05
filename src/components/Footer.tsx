@@ -30,6 +30,10 @@ export default function Footer({ locale = "en" }: { locale?: Locale }) {
         ·{" "}
         <Link href={p("/downloads")} className="underline hover:text-zinc-300">
           {t.downloads}
+        </Link>{" "}
+        ·{" "}
+        <Link href={p("/about")} className="underline hover:text-zinc-300">
+          {t.about}
         </Link>
       </p>
       <p className="mt-2">
@@ -51,6 +55,10 @@ export default function Footer({ locale = "en" }: { locale?: Locale }) {
         ·{" "}
         <Link href={p("/contact")} className="underline hover:text-zinc-300">
           {t.contactPage}
+        </Link>{" "}
+        ·{" "}
+        <Link href={p("/about")} className="underline hover:text-zinc-300">
+          {t.about}
         </Link>
       </p>
       <p className="mt-3 text-xs text-zinc-600">

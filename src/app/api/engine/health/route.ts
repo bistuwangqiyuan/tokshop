@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { verifyCron } from "@/lib/engine/cron";
 import { ensureEngineSchema, getEngineSql } from "@/lib/engine/db";
 import { GATEWAY_BASE_URL, getGatewayToken } from "@/lib/gateway";
+import { collectPaymentsHealth } from "@/lib/payments-health";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** Health check (cron): DB round-trip + AI Gateway probe, logged to engine.ops_log. */
+/** Health check (cron): DB + AI Gateway + payment rails, logged to engine.ops_log. */
 export async function POST(req: Request) {
   if (!verifyCron(req))
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -56,9 +57,27 @@ async function run() {
     checks.upstream = `error: ${String(e).slice(0, 120)}`;
   }
 
+  // 3. Payment rails (same report as /api/engine/payments-health)
+  let paymentsStatus: "ok" | "warn" = "warn";
+  try {
+    const pay = await collectPaymentsHealth(sql);
+    paymentsStatus = pay.status;
+    checks.payments_rails = pay.report.rails.join(",") || "(none)";
+    checks.payments_mail = pay.report.mail.configured;
+    await sql`
+      INSERT INTO engine.ops_log (task, status, detail)
+      VALUES (
+        'payments-health',
+        ${pay.status},
+        ${JSON.stringify(pay.report)}::jsonb
+      )`;
+  } catch (e) {
+    checks.payments = `error: ${String(e).slice(0, 120)}`;
+  }
+
   const ok = checks.db === true && checks.upstream === true;
   await sql`
     INSERT INTO engine.ops_log (task, status, detail)
     VALUES ('health', ${ok ? "ok" : "fail"}, ${JSON.stringify(checks)}::jsonb)`;
-  return NextResponse.json({ ok, checks });
+  return NextResponse.json({ ok, payments: paymentsStatus, checks });
 }

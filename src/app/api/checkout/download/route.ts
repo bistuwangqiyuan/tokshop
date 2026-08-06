@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
         `${product.i18n.en.title} (v${product.version}). Digital document, ` +
         "delivered instantly as a Markdown download plus an online reader. " +
         "Bilingual English and Chinese. Sold by tokshop.xyz.",
-      taxCategory: "ebook",
+      taxCategory: "ebooks",
       email,
       successUrl: deliveryUrl(order.id, locale),
       cancelUrl: `${appUrl()}${cancelBase}`,

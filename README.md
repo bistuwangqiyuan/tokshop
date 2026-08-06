@@ -2,7 +2,7 @@
 
 生产地址：**https://tokshop.xyz**（中文版：https://tokshop.xyz/zh ）｜ 代码仓库：https://github.com/bistuwangqiyuan/tokshop
 
-联系方式：mingxinai@agentmail.to ｜ 13426086861@139.com
+联系方式：support@tokshop.xyz ｜ 13426086861@139.com
 
 一个 OpenAI 兼容的大模型 Token 零售平台，实现"注册 → 充值 → 发 API Key → 调用 → 按 token 计费扣款"的全自动闭环，全程无人工干预。依据《国产开源大模型 Token 全自动化售卖系统方案报告》中 F1（自建 OpenAI 兼容 API 零售）渠道落地。
 
@@ -70,7 +70,7 @@ npm run dev
 | `CNY_PER_USD` | 国内通道折算汇率，默认 `7.3` |
 | `DOWNLOAD_TOKEN_SECRET` | 下载访问 Cookie 与交付页回跳签名；不设回落到 `AUTH_SECRET` |
 | `AGENTMAIL_API_KEY` | 可选；结算后发收据/兑换码，并驱动客服自动回复 |
-| `AGENTMAIL_INBOX_ID` | 可选；默认 `mingxinai@agentmail.to` |
+| `AGENTMAIL_INBOX_ID` | 可选；默认 `mingxinai@agentmail.to`（`support@tokshop.xyz` 经 DNS 转发至此） |
 | `AGENTMAIL_WEBHOOK_SECRET` | 可选；入站邮件 Svix 验签（`/api/webhooks/agentmail`） |
 | `AI_GATEWAY_API_KEY` | 可选；不设则用 Vercel OIDC token |
 | `APP_URL` | `https://tokshop.xyz` |

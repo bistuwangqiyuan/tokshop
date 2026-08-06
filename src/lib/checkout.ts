@@ -61,7 +61,7 @@ export async function startPayment(params: {
   usd: number;
   productName: string;
   productDescription: string;
-  taxCategory: "saas" | "ebook";
+  taxCategory: "saas" | "ebooks";
   email?: string | null;
   successUrl: string;
   cancelUrl: string;

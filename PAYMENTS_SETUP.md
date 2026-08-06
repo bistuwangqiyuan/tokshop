@@ -23,7 +23,7 @@ Creem 官方审核检查表逐条对照，站点侧已全部满足，全部中�
 
 审核时如被问到「你卖什么」，标准答复：面向开发者的 OpenAI 兼容 API 额度（SaaS）与自有数字文档（ebook），均为即时交付的虚拟商品。
 
-> **最常见的拒绝原因是邮箱不一致。** 请确认 Creem 后台 Settings → Business Details 的支持邮箱**就是** `mingxinai@agentmail.to`，与网站页脚完全一致。
+> **最常见的拒绝原因是邮箱不一致。** Creem 后台 Settings → Business Details 的支持邮箱必须是 `support@tokshop.xyz`，与网站页脚一致；该地址已通过 DNS 转发到 `mingxinai@agentmail.to`。
 
 ---
 
@@ -175,7 +175,7 @@ CREEM_API_KEY=creem_test_xxx CREEM_WEBHOOK_SECRET=xxx npm run creem:activate
 | `CNY_PER_USD` | 否 | `7.3` | 国内通道的美元折人民币汇率 |
 | `DOWNLOAD_TOKEN_SECRET` | 否 | 回落到 `AUTH_SECRET` | 下载访问 Cookie 与交付页回跳签名 |
 | `AGENTMAIL_API_KEY` | 否 | 无 | 结算后自动发收据/兑换码；不填则仅站内交付 |
-| `AGENTMAIL_INBOX_ID` | 否 | `mingxinai@agentmail.to` | 发件收件箱，须与页脚客服邮箱一致 |
+| `AGENTMAIL_INBOX_ID` | 否 | `mingxinai@agentmail.to` | AgentMail 内部发件收件箱；公开客服地址 `support@tokshop.xyz` 转发至此 |
 | `AGENTMAIL_WEBHOOK_SECRET` | 开客服自动回复必填 | 无 | AgentMail/Svix 入站验签（`whsec_…`） |
 
 ### AgentMail 客服自动回复（可选、无人值守）

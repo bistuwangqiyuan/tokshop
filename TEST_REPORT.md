@@ -184,7 +184,7 @@ assert round(upstream * 1.5, 8) == 0.00000546    # 零售价 = 成本 x 1.5，�
 | # | Creem 检查项 | 本轮动作 | 断言 | 结果 |
 |---|---|---|---|---|
 | 1 | 商户身份可核实 | 经营者姓名、身份与完整地址收进 `src/lib/site.ts` 单一常量，出现在每页页脚、每个法务页顶部的身份区块、独立联系页，以及 Organization JSON-LD 的 `legalName` 与 `PostalAddress` | S43 / S44 / S45 | 通过 |
-| 2 | 客服邮箱在网站可见且与后台一致 | 新增 `/contact` 与 `/zh/contact` 独立可索引联系页（邮箱保持 `mingxinai@agentmail.to` 不变，需你在后台核对一致） | S35 / S36（contact 中英） | 通过 |
+| 2 | 客服邮箱在网站可见且与后台一致 | `/contact` 与 `/zh/contact` 使用域名邮箱 `support@tokshop.xyz`；Vercel DNS 已配置 MX/TXT 并实测转发到 `mingxinai@agentmail.to` | S35 / S36（contact 中英） | 通过 |
 | 3 | 可接受使用政策 | 新增中英双语 `/aup`：禁止内容清单、禁止行为、高风险用途、处置方式与举报入口 | S46 / S47 | 通过 |
 | 4 | AI 产品透明性 | AUP 首节声明独立转售、与 DeepSeek/阿里云/智谱/月之暗面/OpenAI 均无附属关系、「OpenAI 兼容」仅指请求格式；并说明**目录仅文本模型**，故不适用 Moderation API（该要求只针对图像/视频生成）。定价页与文档页页脚同步声明 | S46 | 通过 |
 | 5 | 无虚假信息 | 删除手册简介中未经证实的「profitable / 真实赚钱」（本站至今零收入）、把「lifetime / 终身」改为与条款一致的表述 | 人工核对 | 通过 |

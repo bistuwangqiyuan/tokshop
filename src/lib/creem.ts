@@ -38,7 +38,7 @@ export type CreemProductSpec = {
    * credits are software; a document sold as a file is an ebook, which is taxed
    * differently in most of the EU.
    */
-  taxCategory: "saas" | "ebook";
+  taxCategory: "saas" | "ebooks";
 };
 
 const productCache = new Map<string, string>();

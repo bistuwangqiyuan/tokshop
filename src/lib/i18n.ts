@@ -7,7 +7,7 @@ export type Locale = "en" | "zh";
 
 export const LOCALES: Locale[] = ["en", "zh"];
 
-export const CONTACT_EMAIL = "mingxinai@agentmail.to";
+export const CONTACT_EMAIL = "support@tokshop.xyz";
 export const CONTACT_EMAIL_CN = "13426086861@139.com";
 
 /** Map a canonical (English) path to its URL in the given locale. */
@@ -98,7 +98,7 @@ export const dict = {
       walletNote: "Mainland China. Charged in CNY at the rate shown.",
       approx: "approx.",
       noRails:
-        "Online checkout is being activated. Email mingxinai@agentmail.to and we will tell you the moment it opens.",
+        "Online checkout is being activated. Email support@tokshop.xyz and we will tell you the moment it opens.",
       redirecting: "Opening the payment page...",
       failed: "Could not start the payment. Please try again.",
       starterUsed:
@@ -353,7 +353,7 @@ export const dict = {
       walletNote: "中国大陆。按下方汇率以人民币扣款。",
       approx: "约",
       noRails:
-        "在线结账正在开通中。可发邮件到 mingxinai@agentmail.to，开通后我们第一时间通知你。",
+        "在线结账正在开通中。可发邮件到 support@tokshop.xyz，开通后我们第一时间通知你。",
       redirecting: "正在打开支付页面...",
       failed: "支付发起失败，请重试。",
       starterUsed: "本账号已使用过一次性体验价，请选择其他金额。",

@@ -717,7 +717,7 @@ you. All of them compound.
 If you take one thing from this handbook, take the break-even formula from 2.2
 and run it on your own numbers before you publish a price.
 
-Questions and corrections are genuinely welcome: mingxinai@agentmail.to. If you
+Questions and corrections are genuinely welcome: support@tokshop.xyz. If you
 find an error here, tell us and we will fix the document - buyers get updates at
 no cost.
 

@@ -9,7 +9,7 @@
 // Reproduce independently: npx lighthouse <url> --only-categories=seo
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const BASE = (process.env.BASE_URL ?? "https://tokshop.xyz").replace(/\/$/, "");
 const MIN_SEO = Number(process.env.MIN_SEO ?? 100);
@@ -50,6 +50,8 @@ async function main() {
     const url = `${BASE}${p}`;
     const file = `psi-results/lh${p.replace(/\W+/g, "_") || "_home"}.json`;
     process.stdout.write(`${url} ... `);
+    rmSync(file, { force: true });
+    let executionError = null;
     try {
       execFileSync(
         "npx",
@@ -65,6 +67,19 @@ async function main() {
         ],
         { stdio: ["ignore", "ignore", "pipe"], timeout: 300_000, shell: process.platform === "win32" }
       );
+    } catch (error) {
+      executionError = error;
+    }
+
+    try {
+      if (executionError) {
+        const stderr = String(executionError.stderr ?? executionError);
+        const reportSurvivedWindowsCleanupError =
+          process.platform === "win32" &&
+          /EPERM[\s\S]*[\\/]lighthouse\./i.test(stderr);
+        if (!reportSurvivedWindowsCleanupError) throw executionError;
+        process.stdout.write("WARN Chrome temp cleanup; ");
+      }
       const lh = JSON.parse(readFileSync(file, "utf8"));
       const seo = Math.round((lh.categories?.seo?.score ?? 0) * 100);
       const row = { url: p, seo, lighthouseVersion: lh.lighthouseVersion, fetchTime: lh.fetchTime };

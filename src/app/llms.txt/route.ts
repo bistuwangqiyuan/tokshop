@@ -59,7 +59,7 @@ ${modelLines || "- See GET /v1/models"}
 
 - [Contact page](${SITE_URL}/contact) · [中文](${SITE_URL}/zh/contact)
 - [About](${SITE_URL}/about) · [中文](${SITE_URL}/zh/about)
-- Support email: mingxinai@agentmail.to
+- Support email: support@tokshop.xyz
 - Support email (China): 13426086861@139.com
 - Operated by Wang Qiyuan, No. 12 Xiaoying East Road, Qinghe, Haidian District, Beijing 100192, China
 - Independent reseller: not affiliated with or endorsed by any model developer

@@ -1,0 +1,10 @@
+﻿code,country,country_groups,controlled_group_hit,layer2_pass,evidence_status,verdict,reason,src
+KH,柬埔寨,D:1,D:1,False,verified,excluded,2026-02-03 已移出 D:5，但仍在 D:1；744.21/744.22 军事用途限制继续适用,S-15
+LA,老挝,D:1,D:1,False,verified,excluded,在 D:1,S-14
+MM,缅甸,"D:1,D:5","D:1,D:5",False,verified,excluded,东南亚唯一仍在 D:5 的国家,S-14
+VN,越南,D:1,D:1,False,verified,excluded,2016 年移出 D:5 但仍在 D:1。FPT AI Factory 已有 HGX B300 现货，仍不可用,S-14
+ID,印度尼西亚,(未见于所查节录),,True,unlisted_in_reviewed_excerpt,candidate,目的地层面通过,S-14
+MY,马来西亚,(未见于所查节录),,True,unlisted_in_reviewed_excerpt,candidate,目的地层面通过；但有本国 MITI 战略贸易许可制，且为美国点名的转运关注国,S-14
+PH,菲律宾,(未见于所查节录),,True,unlisted_in_reviewed_excerpt,candidate,目的地层面通过,S-14
+SG,新加坡,(未见于所查节录),,True,unlisted_in_reviewed_excerpt,benchmark,目的地层面通过，但成本为区域最高，作为成本上界对照,S-14
+TH,泰国,(未见于所查节录),,True,unlisted_in_reviewed_excerpt,candidate,目的地层面通过；为美国点名的转运关注国，本国是否有对等许可制待核实,S-14

@@ -1,0 +1,6 @@
+﻿code,国家,层二目的地,层三东道国管制,B300可得性,托管_USD_kW_月,托管数据状态,电价_USD_kWh,空置率,到美西RTT_ms,TTFT均值_ms,TTFT均值达标,TTFT_P90达标,企业所得税,出口服务消费税,交付前置期_月
+TH,泰国,通过,未核实（G-4）,Freyr AI，首家将 B300/GB300 集群投入实际运营的 NVIDIA 云伙伴,239.785,estimate（G-1）,,0.233,200.0,766.7,True,False,0.2,unverified,1
+MY,马来西亚,通过,MITI Directive of the Strategic Trade Controller No. 1/2025,Bit Origin 16 台，2026Q3 交付，已有托管安排与签约客户,261.547,estimate（G-1）,0.125,0.007,180.0,746.7,True,False,0.24,generally_out_of_scope,2
+ID,印度尼西亚,通过,未核实（G-4）,Freyr AI 列为战略优先市场，尚无已投运公开案例,195.858,estimate（G-1）,,0.205,180.0,746.7,True,False,0.22,unverified,1
+PH,菲律宾,通过,未核实（G-4）,无公开案例,,缺口 G-1,,,,,,,0.25,zero_rated,1
+SG,新加坡,通过,未核实（G-4）,多家新加坡供应商可询价（SuperX 等），价格最高,403.0,quote,0.15,0.049,165.0,731.7,True,False,0.17,zero_rated,1

@@ -1,0 +1,6 @@
+﻿code,country,host_regime,effective,covered_acts,advance_notice_days,requires_us_reexport_license,status,src
+MY,马来西亚,MITI Directive of the Strategic Trade Controller No. 1/2025,2025-07-14,"export,transshipment,transit",30.0,True,已核实存在,S-16
+TH,泰国,,,,,,未核实（不得据此认定无管制）,G-4
+ID,印度尼西亚,,,,,,未核实（不得据此认定无管制）,G-4
+PH,菲律宾,,,,,,未核实（不得据此认定无管制）,G-4
+SG,新加坡,,,,,,未核实（不得据此认定无管制）,G-4

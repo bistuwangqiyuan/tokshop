@@ -1,0 +1,548 @@
+# 东南亚选址 + B300 租赁 + Kimi K3 售卖 token：参数基座
+#
+# 规则
+# ----
+# 1. 凡本文件未登记的数字，一律不得作为报告结论的依据。
+# 2. 每个 fact 必带 src（可回溯到 ../02-数据来源与核验附录.md 的 S-xx 编号）与 date。
+# 3. assumption 段的参数无公开出处，必须显式标为假设，并纳入敏感性分析。
+# 4. gap 段登记「查不到」的数据，报告中不得用估值冒充事实。
+#
+# 统一取数日期：2026-08-05（UTC+8），个别条目另注。
+
+meta:
+  report_date: "2026-08-05"
+  horizon_months: 36
+  seconds_per_month: 2592000      # 30 天月，与前序报告 reports/b300-kimi-k3 口径一致
+  hours_per_month: 730            # 用于 $/GPU-小时 折算（8760/12）
+
+# ---------------------------------------------------------------------------
+# 汇率（S-20）
+# ---------------------------------------------------------------------------
+fx:
+  usd_cny:
+    value: 6.7917
+    src: S-20
+    date: "2026-08-04"
+    note: 中国外汇交易中心人民币对美元中间价。市场即期约 6.749，用中间价更稳健。
+  usd_sgd:
+    value: 1.2819
+    src: S-20
+    date: "2026-08-03"
+
+# ---------------------------------------------------------------------------
+# 标的租金（本项目给定）
+# ---------------------------------------------------------------------------
+rent:
+  given_cny_per_month:
+    value: 150000
+    src: 项目给定
+    note: 1 台 8 卡 HGX B300 裸金属整机，按月支付。币种与规格经用户确认。
+  gpus_per_node:
+    value: 8
+    src: S-04
+
+# ---------------------------------------------------------------------------
+# 一、Kimi K3 模型规格（S-01）
+# ---------------------------------------------------------------------------
+model_k3:
+  total_params:
+    value: 2.8e12
+    src: S-01
+  active_params:
+    value: 104e9
+    src: S-01
+  num_experts:
+    value: 896
+    src: S-01
+  experts_per_token:
+    value: 16
+    src: S-01
+  shared_experts:
+    value: 2
+    src: S-01
+  layers:
+    value: 93
+    src: S-01
+    note: 1 dense + 69 KDA + 24 Gated MLA
+  context_length:
+    value: 1048576
+    src: S-01
+  weights_gb_per_gpu:
+    value: 195.86
+    src: S-05
+    note: 8xB300 实测，MXFP4 原生量化感知训练权重
+  weights_tb_total:
+    value: 1.57
+    src: S-05
+
+# ---------------------------------------------------------------------------
+# 二、B300 硬件规格（S-04）
+# ---------------------------------------------------------------------------
+hardware:
+  hbm_bandwidth_tb_s:
+    value: 8.0
+    src: S-04
+    note: 每 GPU。八卡聚合 64 TB/s。
+  nvfp4_dense_pflops:
+    value: 15.0
+    src: S-04
+    note: 每 GPU 稠密。八卡 120 PFLOPS。NVIDIA 营销口径 144 PFLOPS 为含稀疏。
+  usable_hbm_gib_per_gpu:
+    value: 267.69
+    src: S-04
+    note: GPUStack 八卡实测可见值，低于 288GB 标称约 7%。采用实测值。
+  gpu_tgp_w:
+    value: 1400
+    src: S-04
+  system_max_kw:
+    value: 14.5
+    src: S-19
+    note: DGX B300 整机（含 CPU/DPU/存储），NVIDIA 用户手册。B300 必须直接液冷。
+  baseboard_kw_range:
+    value: [8.8, 11.2]
+    src: S-19
+    note: 仅 8 卡基板，1100W 风冷档至 1400W 液冷档，不含 CPU 与网络。
+
+# ---------------------------------------------------------------------------
+# 三、产能实测锚点（S-06 / S-07）
+# ---------------------------------------------------------------------------
+capacity:
+  decode_points:
+    value:
+      - [2000, 1759.0]      # S-06 Openzeka DGX-B300 TP8 vLLM 直出 c=64（未取 SGLang 1863，保守）
+      - [65536, 501.0]      # S-07 GPUStack 64K/c=10 vLLM 稳态
+      - [204800, 268.0]     # S-07 GPUStack 200K/c=10 SGLang+DCP8 稳态（vLLM 为 163）
+    src: S-06,S-07
+    note: 聚合解码输出 tok/s。三点分别来自两家独立实测，测试条件不同，见 C-5。
+  prefill_tokens_per_sec:
+    value: 16134.0
+    src: S-07
+    note: 由 GPUStack 两组端到端耗时反解，64K 组得 16134、200K 组得 18425，取较低者。
+  prefill_engine_log_range:
+    value: [19000, 23000]
+    src: S-07
+    note: GPUStack 引擎日志自报稳态聚合 prefill 吞吐。高于反解值，作为上界用于敏感性。
+  kv_pool_tokens:
+    value: 2687776
+    src: S-07
+    note: vLLM gpu-memory-utilization=0.95 时 KV 池容量。该配置已超额分配，安全值约 0.92。
+  kv_gib_per_gpu:
+    value: 43.76
+    src: S-07
+  cold_start_minutes_warm_disk:
+    value: 10.6
+    src: S-07
+    note: 权重已在本地 NVMe，容器创建到就绪。用于计划外重启的 MTTR。
+  cold_start_minutes_full:
+    value: 88.8
+    src: S-05
+    note: 含约 81.4 分钟权重加载的完整冷启动。用于首次开机与迁移。见 C-6。
+  spec_decode_breakeven_concurrency:
+    value: 16
+    src: S-06
+    note: DSpark 投机解码在 c>16 后由增益转为拖累，生产高负载应关闭。
+
+# ---------------------------------------------------------------------------
+# 四、售价与市场结构（S-08 / S-09）
+# ---------------------------------------------------------------------------
+pricing:
+  price_in_usd_per_m:
+    value: 3.00
+    src: S-08
+  price_cached_in_usd_per_m:
+    value: 0.30
+    src: S-08
+  price_out_usd_per_m:
+    value: 15.00
+    src: S-08
+  cache_hit_rate:
+    value: 0.85
+    src: S-09
+    note: OpenRouter 实测各 provider 命中率 65%-89%，Moonshot 自营 89.3%。取中位。
+  provider_count_on_openrouter:
+    value: 11
+    src: S-08
+    note: K3 开放权重 9 天内已有 11 家同价竞争，新进入者无定价权。
+  discount_competitor:
+    value: [1.50, 7.50]
+    src: S-08
+    note: TeamoRouter 为 K3 唯一低于官方价者，输入/输出 = 官方价的 50%。
+  deepseek_v4flash_out_usd_per_m:
+    value: 0.28
+    src: S-21
+    note: DeepSeek V4-Flash 2026-07-31 定价，作为行业输出价地板的参照，非 K3 同类替代。
+  openrouter_provider_markup:
+    value: 0.0
+    src: S-22
+    note: OpenRouter 不对 provider 价格加价，按月开票结算，provider 自设美元价。
+
+# ---------------------------------------------------------------------------
+# 五、出口管制与合规（S-13 / S-14 / S-15 / S-16）
+# ---------------------------------------------------------------------------
+export_control:
+  entity_rule:
+    src: S-13
+    date: "2026-05-31"
+    citation: "EAR 742.6(a)(6)(iii)(A)"
+    scope: all destinations outside the United States
+    trigger: 实体总部或其最终母公司总部位于 Country Group D:5 或澳门
+    eccn_covered: ["3A090.a", "3A090.b", "4A090.a", "4A090.b", ".z"]
+    note: >
+      BIS 2026-05-31 指引。此为实体属性管制，与物理目的地无关，更换东道国无法解除。
+      存在 740.2(a)(9)(ii) 项下的许可例外。善意数据中心运营商对存量物项的持续使用、
+      存储、处置、维护在 BIS 另行通知前无需停止。
+  destination_rule:
+    src: S-14
+    citation: EAR Supplement No. 1 to Part 740
+    note: 3A090 对 Country Group D:1/D:4/D:5 目的地本身有许可要求。
+
+# 东南亚各国 Country Group 归属。verified 表示已在所查 EAR 附录节录中直接看到标记；
+# unlisted_in_reviewed_excerpt 表示节录中未见该国出现在 Group D 任一列，须律师确认。
+countries:
+  MM:
+    name_cn: 缅甸
+    groups: ["D:1", "D:5"]
+    status: verified
+    src: S-14
+    verdict: excluded
+    reason: 东南亚唯一仍在 D:5 的国家
+  KH:
+    name_cn: 柬埔寨
+    groups: ["D:1"]
+    status: verified
+    src: S-15
+    verdict: excluded
+    reason: 2026-02-03 已移出 D:5，但仍在 D:1；744.21/744.22 军事用途限制继续适用
+  VN:
+    name_cn: 越南
+    groups: ["D:1"]
+    status: verified
+    src: S-14
+    verdict: excluded
+    reason: 2016 年移出 D:5 但仍在 D:1。FPT AI Factory 已有 HGX B300 现货，仍不可用
+  LA:
+    name_cn: 老挝
+    groups: ["D:1"]
+    status: verified
+    src: S-14
+    verdict: excluded
+    reason: 在 D:1
+  MY:
+    name_cn: 马来西亚
+    groups: []
+    status: unlisted_in_reviewed_excerpt
+    src: S-14
+    verdict: candidate
+    host_control: S-16
+    reason: 目的地层面通过；但有本国 MITI 战略贸易许可制，且为美国点名的转运关注国
+  TH:
+    name_cn: 泰国
+    groups: []
+    status: unlisted_in_reviewed_excerpt
+    src: S-14
+    verdict: candidate
+    reason: 目的地层面通过；为美国点名的转运关注国，本国是否有对等许可制待核实
+  ID:
+    name_cn: 印度尼西亚
+    groups: []
+    status: unlisted_in_reviewed_excerpt
+    src: S-14
+    verdict: candidate
+    reason: 目的地层面通过
+  PH:
+    name_cn: 菲律宾
+    groups: []
+    status: unlisted_in_reviewed_excerpt
+    src: S-14
+    verdict: candidate
+    reason: 目的地层面通过
+  SG:
+    name_cn: 新加坡
+    groups: []
+    status: unlisted_in_reviewed_excerpt
+    src: S-14
+    verdict: benchmark
+    reason: 目的地层面通过，但成本为区域最高，作为成本上界对照
+
+host_country_controls:
+  MY:
+    instrument: MITI Directive of the Strategic Trade Controller No. 1/2025
+    effective: "2025-07-14"
+    src: S-16
+    covered_acts: ["export", "transshipment", "transit"]
+    not_covered: 进口后在本国部署使用本身不属于该指令列举的行为
+    advance_notice_days: 30
+    form: AICA (Annex II)
+    requires_us_reexport_license: true
+    bulk_permit_since: "2025-12-03"
+    note: >
+      许可申请须附美国再出口许可与制造商 ECCN 分类，等于马来西亚在前置执行美国制度，
+      不构成绕道。取得 ICP 资质者可申请多次与批量许可。
+  us_scrutiny:
+    src: S-17
+    date: "2025-07-04"
+    note: 美国商务部曾起草针对马来西亚与泰国的 AI 芯片限制规则，两国为转运关注对象。
+
+license_k3:
+  src: S-03
+  maas_threshold_usd_12m:
+    value: 20000000
+    note: 须同时满足「经营 MaaS」与「被许可方及其关联方连续 12 个月合计收入超此值」
+  attribution_mau:
+    value: 100000000
+  attribution_monthly_revenue_usd:
+    value: 20000000
+  verdict: 本项目落入 MaaS 定义但远低于收入门槛，可免费商用，无需另签协议
+
+# ---------------------------------------------------------------------------
+# 六、选址经济性（S-18 / S-19 / S-23 / S-24 / S-25）
+# ---------------------------------------------------------------------------
+siting:
+  singapore_colo_usd_kw_month:
+    value: [330, 475]
+    avg: 403
+    src: S-18
+    date: "2026 Q1"
+    note: CBRE 全球数据中心趋势 2026，亚太最高。作为绝对水平的权威锚点。
+  singapore_ai_colo_usd_kw_month:
+    value: 313
+    src: S-23
+    note: gpuleaseindex 液冷 100kW+ 口径。与 CBRE 区间下沿接近，量级自洽。
+  relative_colo_ratio:
+    value:
+      SG: 1.000
+      MY: 0.649
+      TH: 0.595
+      ID: 0.486
+      PH: null
+    src: S-24
+    note: >
+      由 simpler.cloud 各国区间中值相对新加坡中值求得（MY 1200/1850、TH 1100/1850、
+      ID 900/1850）。该来源绝对值与 CBRE 差约 4 倍、口径不明，故只取其相对比例，
+      绝对水平一律以 CBRE 新加坡值为基准换算。菲律宾无数据。
+  vacancy_rate:
+    value:
+      SG: 0.049
+      MY_Johor: 0.007
+      ID_Jakarta: 0.205
+      TH_Bangkok: 0.233
+    src: S-25
+    date: "2026-07-31"
+    note: 空置率决定议价能力。柔佛虽电价低但最紧张，曼谷与雅加达为买方市场。
+  electricity_usd_kwh:
+    value:
+      SG: 0.150
+      MY: [0.120, 0.130]
+    src: S-23,S-25
+    note: >
+      马来西亚为 UHV 分时电价 51.09-55.18 sen/kWh，来源自行折算 51.09 sen = $0.12，
+      隐含 MYR/USD 4.2575，据此折算上沿 55.18 sen = $0.130。另收容量费与网络费。
+      RP4 基准电价 2025-07 起上调约 14%。泰国/印尼/菲律宾电价未取得可引用来源，见 gaps。
+  latency_rtt_ms_to_us_west:
+    value:
+      SG: 165
+    src: S-26
+    note: Bifrost 海缆 2025 RFS，新加坡至美西往返「不到 165ms」，较既有系统快至多 10ms。
+  latency_rtt_ms_to_frankfurt:
+    value:
+      SG: 170
+    src: S-27
+  latency_hop_to_singapore_ms:
+    value:
+      MY_KL: 15
+      ID_Jakarta: 15
+      TH_Bangkok: 35
+      PH_Manila: null
+    src: S-27
+    note: 东南亚国际出口普遍经新加坡。菲律宾无数据。
+  corporate_income_tax:
+    value:
+      SG: 0.17
+      TH: 0.20
+      ID: 0.22
+      MY: 0.24
+      PH: 0.25
+      VN: 0.20
+    src: S-28
+    note: Grant Thornton ASEAN 6 Tax Guide 2026 标准税率。
+  singapore_sute:
+    src: S-29
+    first_tranche_sgd: 100000
+    first_exempt: 0.75
+    second_tranche_sgd: 100000
+    second_exempt: 0.50
+    years: 3
+    note: 新创企业前 3 个评估年。另有 YA2026 的 50% 税额回扣，上限 S$40,000。
+  singapore_cit_rebate_ya2026:
+    rate: 0.50
+    cap_sgd: 40000
+    src: S-29
+  export_service_consumption_tax:
+    value:
+      SG: zero_rated
+      MY: generally_out_of_scope
+      PH: zero_rated
+      TH: unverified
+      ID: unverified
+    src: S-28
+    note: 面向海外开发者售卖 token 属出口服务。新加坡零税率且可抵进项。
+
+# ---------------------------------------------------------------------------
+# 七、租金交叉验证（S-30 / S-31 / S-32）
+# ---------------------------------------------------------------------------
+rent_validation:
+  bit_origin:
+    src: S-30
+    date: "2026-06-29"
+    servers: 16
+    capex_usd: 11000000
+    projected_monthly_revenue_usd: 360000
+    delivery: "2026Q3"
+    location: Malaysia
+    note: >
+      NASDAQ:BTOG 公告。月收入为「未扣运营费用」的口径，即客户支付的租金总额，
+      正是承租方视角的可比价。折合每台每月 22,500 美元。
+  hardware_cost_usd_per_node:
+    value: [400000, 600000]
+    src: S-31
+    note: Spheron 口径的 8 卡 HGX B300 整机取得成本。另有来源称约 30 万美元起。
+  qubrid_bare_metal_usd_per_year:
+    value: 389400
+    src: S-32
+    note: 美国 Qubrid 挂牌 8 卡 B300 288GB 裸金属年费，折合每月 32,450 美元。
+  china_domestic_observed_cny_per_month:
+    value:
+      长协3年_星宇: 108000
+      长单_雪球调研: 150000
+      现货中位_至顶: 190000
+      现货高配_悍铭: 265000
+    src: S-33
+    note: >
+      前序报告 reports/b300-kimi-k3 的 S-10。此处引入作为第三条独立参照：
+      本项目 ¥150,000 恰好等于其中的「长单」价位。
+
+# ---------------------------------------------------------------------------
+# 八、显式假设（无公开出处，全部纳入敏感性）
+# ---------------------------------------------------------------------------
+assumptions:
+  deposit_months:
+    value: 2.0
+    note: 商务惯例，未获本项目合同文本证实。列为谈判必争项。
+  opex_buffer_months:
+    value: 3.0
+    note: 运营现金缓冲。用户已确认「首月租金 + 3 个月安全垫」的初始资金口径。
+  lease_term_months:
+    value: 36
+    note: >
+      本项目未给定租期。但 ¥150,000/月 显著低于按需市场价，行业惯例上只有长约
+      才能取得该价位，故基准取 36 个月，并对 12 与 1（月付无承诺）做敏感性。
+      这一假设决定尾部租约义务的大小，是本模型最敏感的假设之一。
+  early_termination_allowed:
+    value: false
+    note: 基准假设无提前终止权。若能谈到，下行风险大幅收窄。
+  payment_fee_rate:
+    value: 0.039
+    note: 自建 API 侧支付通道费率，来自本仓 PAYMENTS_SETUP.md 的 Creem 记录商户费率。
+  payment_fee_fixed_usd:
+    value: 0.40
+  avg_topup_usd:
+    value: 20.0
+  misc_opex_usd_per_month:
+    value: 1200
+    note: 监控、域名、对象存储、冗余上游等。按节点数线性计。
+  compliance_opex_usd_per_year:
+    value: 6000
+    note: >
+      新加坡主体年度合规约 S$7,000-8,000（约 US$5,500-6,200）。跨境增设算力地后
+      另增东道国申报义务，此处仅计主体侧，东道国侧列为不确定性。
+  aggregator_revenue_share:
+    value: 0.60
+    note: 双轨渠道中经聚合平台的收入占比。聚合平台无加价但账期长。
+  ar_days_aggregator:
+    value: 45
+    note: OpenRouter 按月开票，假设账期 net-30，加上开票周期取 45 天。营运资金缺口来源。
+  ar_days_direct:
+    value: 0
+    note: 自建 API 为预付额度，无应收。
+  rent_paid_in_advance_months:
+    value: 1.0
+  price_erosion_annual:
+    value: 0.20
+    note: 依据 11 家同价竞争的市场结构定性推断，无历史序列可拟合。三档 0/20/40%。
+  hazard_monthly:
+    value: 0.010
+    note: >
+      月度中断危险率。合规东道国下低于前序报告的境内灰色渠道情景（1.5%），
+      但仍需覆盖监管突变、供应链与单点故障。三档 0.5/1.0/2.0%。
+  supply_cap_new_nodes_per_quarter:
+    value: 1
+    note: B300 仍属配额供应；Bit Origin 需通过收购第三方采购单才拿到 16 台。
+  provisioning_lag_months:
+    value:
+      MY: 2
+      TH: 1
+      ID: 1
+      PH: 1
+      SG: 1
+    note: 马来西亚含 MITI 提前 30 天申报。均为估计值。
+  demand_scenarios:
+    pessimistic: {month_to_first_node_full: 60.0, plateau_nodes: 0.35}
+    neutral: {month_to_first_node_full: 24.0, plateau_nodes: 1.0}
+    optimistic: {month_to_first_node_full: 10.0, plateau_nodes: 3.0, growth_after_plateau: 0.02}
+    note: 与前序报告同口径，便于两份报告横向对照。取决于获客能力，非外部事实。
+  discount_rate_annual:
+    value: 0.12
+    note: 用于尾部租约义务折现。取新兴市场算力资产融资成本量级。
+  lessor_cost_model:
+    amortization_months: 36
+    financing_rate_annual: 0.12
+    contracted_kw: 15.0
+    avg_load_factor: 0.85
+    pue: 1.25
+    network_usd_per_month: 1000
+    note: >
+      出租方成本反推的假设集。摊销 36 个月对应 AI 加速器的实际经济寿命（3 年后
+      被新一代替代），比会计上常用的 5 年更贴近现实。合约功率取整机上限 14.5kW
+      上浮至 15kW；平均负载因子 85% 反映推理工况下 GPU 接近 TDP 运行。
+      PUE 1.25 为直接液冷的典型值。这些都是假设，用于判断报价是否可持续，
+      不用于测算我方成本（我方成本就是合同租金本身）。
+
+# ---------------------------------------------------------------------------
+# 九、数据缺口：查不到，绝不用估值冒充事实
+# ---------------------------------------------------------------------------
+gaps:
+  - id: G-1
+    item: 柔佛/曼谷/雅加达/马尼拉的 AI 级液冷托管实际牌价
+    status: 全部为询价定价，无公开牌价
+    impact: 各国托管成本只能用 CBRE 新加坡绝对值 × 相对比例推算，属估计非报价
+    action: M1 选址门以 RFQ 取得可签署报价后替换
+  - id: G-2
+    item: 泰国、印尼、菲律宾的工商电价
+    status: 未取得可引用来源
+    impact: 这三国不做出租方成本反推，仅做租金与税负对比
+    action: RFQ 时一并索取电价条款
+  - id: G-3
+    item: 马尼拉到新加坡及到美西的网络延迟
+    status: 无数据
+    impact: 菲律宾不纳入延迟量化排名
+    action: 实测或向 IDC 索取
+  - id: G-4
+    item: 泰国、印尼、菲律宾是否有与马来西亚 MITI 指令对等的 AI 芯片许可制
+    status: 未核实
+    impact: 层三筛查对这三国留空，不得据此宣称其「无管制」
+    action: 由当地律师出具意见
+  - id: G-5
+    item: 马来西亚实缴资本 ≤RM250 万公司的优惠税率档具体数值
+    status: 来源表格截断
+    impact: 马来西亚一律按 24% 标准税率计，偏保守
+    action: 查证后可下调
+  - id: G-6
+    item: 延迟到 OpenRouter 路由流量份额的定量映射
+    status: 无公开数据
+    impact: 不构造需求弹性，只做 SLO 阈值通过与否的定性判断
+    action: 上架后用自身流量实测
+  - id: G-7
+    item: 本项目租约的押金月数、租期、提前终止条款
+    status: 未获合同文本
+    impact: 尾部租约义务与下行风险的测算全部依赖假设
+    action: 签约前必须确认，见 assumptions.lease_term_months

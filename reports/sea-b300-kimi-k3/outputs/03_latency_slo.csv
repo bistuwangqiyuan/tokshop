@@ -1,0 +1,6 @@
+﻿country,network_delta_ms,ttft_mean_ms,ttft_p90_ms,mean_pass_slo,p90_pass_slo,mean_degradation_pct,p90_degradation_pct,status
+SG,0.0,731.7,1107.0,True,False,0.0,0.0,
+MY,15.0,746.7,1122.0,True,False,2.050020500205002,1.3550135501355014,
+ID,15.0,746.7,1122.0,True,False,2.050020500205002,1.3550135501355014,
+TH,35.0,766.7,1142.0,True,False,4.783381167145005,3.1616982836495033,
+PH,,,,,,,,缺口 G-3，不参与延迟排名

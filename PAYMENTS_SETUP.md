@@ -33,14 +33,15 @@ Creem 官方审核检查表逐条对照，站点侧已全部满足，全部中�
 
 费率 3.9% + $0.40/笔；新账户前 €1,000 收入 0% 手续费。
 
-### 当前进度（2026-08-01）
+### 当前进度（2026-08-07 实测）
 
 - [x] 账号已注册（王启源 / 个人）
-- [ ] KYC / 店铺审核中（通常 24–48 小时，高峰可到 72 小时）
-- [ ] 拿到 **Test Mode** API Key → 立刻可跑通全流程（不收真钱）
-- [ ] 审核通过 → 换 live Key，设 `CREEM_TEST_MODE=false`，收真钱
+- [x] **Test Mode** API Key + Webhook 已写入 Vercel Production
+- [x] 生产 `availableRails()` 含 `creem`；`/downloads` 可建单并跳转 Creem 测试收银台（URL 含 `/test/`，**尚未收真钱**）
+- [ ] KYC / 店铺审核通过（Creem 后台确认 Account / Store 为 Approved）
+- [ ] 换成 **live** Key + live Webhook Secret，设 `CREEM_TEST_MODE=false`，redeploy 后收真钱
 
-审核期间请先做下面「测试模式」一节；不要等 live 通过才动手。
+**下一步只剩一件事：Creem 审核通过后切 live。** 测试链路已通，不必再等代码。
 
 ### 开户步骤（备查）
 
